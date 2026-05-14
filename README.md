@@ -1,2 +1,2 @@
-# dots-tsh-helper
-My first attempt at making a discord bot! Trying to integrate TSH's stage banning app as a bot on discord for ease of running events.
+# Dot's TSH Helper Bot
+My first attempt at making a discord bot! This repository attempts to integrate TSH's stage banning app as a bot on discord for ease of running events that require stage-banning and want to intergrate closely with TSH's stage banning overlay.
