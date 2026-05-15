@@ -2,12 +2,13 @@ import os
 import discord
 from discord import app_commands
 from discord import ui
-from discord import ButtonStyle
 from dotenv import load_dotenv
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
+SERVER_IP = "127.0.0.1"
+SERVER_PORT = 5000
 
 intents = discord.Intents.default()
 bot = discord.Client(intents=intents)
@@ -69,9 +70,9 @@ class ConfirmView(ui.View):
 
     # When the confirm button is pressed, set the inner value to `True` and
     # stop the View from listening to more input.
-    # We also send the user an ephemeral message that we're confirming their choice.
     @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        print(interaction.user.id)
         await interaction.response.edit_message(content='Confirmed', view=None)
         self.value = True
         self.stop()
