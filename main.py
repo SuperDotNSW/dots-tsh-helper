@@ -21,6 +21,7 @@ bot.tree = app_commands.CommandTree(bot)
 async def setup_hook():
     print("SETUP HOOK BEGIN:")
     assert bot.user is not None
+    assert config.get_stream_manager_role_id() != 0
 
 # Runs every time the bot connects to discord
 # This can re-run if the bot loses connection somehow and reconnects.
@@ -29,50 +30,36 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
     await bot.tree.sync()
 
-class Feedback(ui.Modal, title='Feedback'):
-    # Our modal classes MUST subclass `discord.ui.Modal`,
-    # but the title can be whatever you want.
+class StageButton(discord.ui.Button):
+    display_name = "Stage"
+    on_pressed_callback:callable
+    stage_object:dict
 
-    # This will be a short input, where the user can enter their name
-    # It will also have a placeholder, as denoted by the `placeholder` kwarg.
-    # By default, it is required and is a short-style input which is exactly
-    # what we want.
-    name = discord.ui.TextInput(
-        label='Name',
-        placeholder='Your name here...',
-    )
-
-    # This is a longer, paragraph style input, where user can submit feedback
-    # Unlike the name, it is not required. If filled out, however, it will
-    # only accept a maximum of 300 characters, as denoted by the
-    # `max_length=300` kwarg.
-    feedback = discord.ui.TextInput(
-        label='What do you think of this new feature?',
-        style=discord.TextStyle.long,
-        placeholder='Type your feedback here...',
-        required=False,
-        max_length=300,
-    )
-
-    async def on_submit(self, interaction: discord.Interaction):
-        print(self.feedback.value)
-        print(self.name.value)
-        await interaction.response.send_message(f'Thanks for your feedback, {self.name.value}!', ephemeral=True)
-
-    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
-
-        # Make sure we know what the error actually is
-        traceback.print_exception(type(error), error, error.__traceback__)
+    def __init__(self, stage_object:dict={}, on_pressed_callback:callable=()):
+        self.stage_object = stage_object
+        self.stage_object['display_name'] = "STAGE_NAME" # TEMP
+        self.display_name = stage_object['display_name']
+        self.on_pressed_callback = on_pressed_callback
+        super().__init__(label="Stage",row=0)
+    
+    async def callback(self, interaction:discord.Interaction) -> None:
+        self.style = discord.ButtonStyle.red
+        await interaction.response.edit_message(view=self.view)
 
 class ConfirmView(ui.View):
     def __init__(self):
         super().__init__()
         self.value = None
 
+        self.add_item(StageButton(on_pressed_callback=self.on_ban_pressed))
+        self.add_item(StageButton(on_pressed_callback=self.on_ban_pressed))
+    
+    async def on_ban_pressed(interaction:discord.Interaction, stage_object:dict):
+        await interaction.response.edit_message(content='Banned '+stage_object['display_name'], view=None)
+
     # When the confirm button is pressed, set the inner value to `True` and
     # stop the View from listening to more input.
-    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green)
+    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green, row=1)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         print(interaction.user.id)
         await interaction.response.edit_message(content='Confirmed', view=None)
@@ -80,7 +67,7 @@ class ConfirmView(ui.View):
         self.stop()
 
     # This one is similar to the confirmation button except sets the inner value to `False`
-    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey)
+    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey, row=1)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(content='Cancelled', view=None)
         self.value = False
@@ -90,10 +77,11 @@ class ConfirmView(ui.View):
 @app_commands.describe(stream_match="Connects the banning interface to the stream tool. Can only be used by stream moderators.")
 async def init(interaction: discord.Interaction, stream_match:bool=False):
     user = interaction.user
-    if stream_match and (user.permissions.administrator or user.get_role()):
+    if stream_match and (user.permissions.administrator or user.get_role(config.get_stream_manager_role_id())):
         pass
 
     view = ConfirmView()
+    view.timeout = None
     await interaction.response.send_message('erm', view=view, ephemeral=True)
     await view.wait()
     if view.value is None:
