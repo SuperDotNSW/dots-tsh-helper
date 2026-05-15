@@ -5,17 +5,18 @@ from discord import app_commands
 from discord import ui
 from dotenv import load_dotenv
 
-load_dotenv()
+import TSHCommunicator
 
+load_dotenv()
 TOKEN = getenv("TOKEN")
-SERVER_IP = "localhost"
-SERVER_PORT = 5000
-SERVER_URL = "http://"+SERVER_IP+":"+str(SERVER_PORT)
 
 intents = discord.Intents.default()
 bot = discord.Client(intents=intents)
 bot.tree = app_commands.CommandTree(bot)
 
+TSHCommunicator.fetch_data()
+current_ruleset = TSHCommunicator.current_ruleset
+current_state = TSHCommunicator.current_state
 
 # Runs only once at during bot initialisation
 async def setup_hook():
@@ -31,19 +32,19 @@ async def on_ready():
     await bot.tree.sync()
 
 class StageButton(discord.ui.Button):
-    display_name = "Stage"
-    on_pressed_callback:callable
+    display_name:str = "Stage"
     stage_object:dict
 
-    def __init__(self, stage_object:dict={}, on_pressed_callback:callable=()):
+    def __init__(self, stage_object:dict, row:int=0):
         self.stage_object = stage_object
-        self.stage_object['display_name'] = "STAGE_NAME" # TEMP
         self.display_name = stage_object['display_name']
-        self.on_pressed_callback = on_pressed_callback
-        super().__init__(label="Stage",row=0)
+        super().__init__(label=self.display_name, row=row)
     
+    def style(self) -> discord.ButtonStyle:
+        return discord.ButtonStyle.gray
+
     async def callback(self, interaction:discord.Interaction) -> None:
-        self.style = discord.ButtonStyle.red
+        TSHCommunicator.request_strike_stage(self.stage_object)
         await interaction.response.edit_message(view=self.view)
 
 class ConfirmView(ui.View):
@@ -51,15 +52,18 @@ class ConfirmView(ui.View):
         super().__init__()
         self.value = None
 
-        self.add_item(StageButton(on_pressed_callback=self.on_ban_pressed))
-        self.add_item(StageButton(on_pressed_callback=self.on_ban_pressed))
+        from math import floor
+        for i in range(len(current_ruleset.neutralStages) - 1):
+            self.add_item(StageButton(current_ruleset.neutralStages[i], floor(float(i)/5.0)))
+        for i in range(len(current_ruleset.counterpickStages) - 1):
+            self.add_item(StageButton(current_ruleset.counterpickStages[i], floor(float(i + len(current_ruleset.neutralStages))/5.0)))
     
-    async def on_ban_pressed(interaction:discord.Interaction, stage_object:dict):
-        await interaction.response.edit_message(content='Banned '+stage_object['display_name'], view=None)
-
+    
+    confirm_row:int = min(len(current_ruleset.neutralStages), 4)
+    
     # When the confirm button is pressed, set the inner value to `True` and
     # stop the View from listening to more input.
-    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green, row=1)
+    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green, row=confirm_row)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
         print(interaction.user.id)
         await interaction.response.edit_message(content='Confirmed', view=None)
@@ -67,7 +71,7 @@ class ConfirmView(ui.View):
         self.stop()
 
     # This one is similar to the confirmation button except sets the inner value to `False`
-    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey, row=1)
+    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey, row=confirm_row)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(content='Cancelled', view=None)
         self.value = False
@@ -82,7 +86,7 @@ async def init(interaction: discord.Interaction, stream_match:bool=False):
 
     view = ConfirmView()
     view.timeout = None
-    await interaction.response.send_message('erm', view=view, ephemeral=True)
+    await interaction.response.send_message('erm', view=view)
     await view.wait()
     if view.value is None:
         print('Timed out')
