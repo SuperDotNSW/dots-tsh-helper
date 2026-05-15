@@ -1,4 +1,5 @@
-import os
+import config
+from os import getenv
 import discord
 from discord import app_commands
 from discord import ui
@@ -6,9 +7,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN")
-SERVER_IP = "127.0.0.1"
+TOKEN = getenv("TOKEN")
+SERVER_IP = "localhost"
 SERVER_PORT = 5000
+SERVER_URL = "http://"+SERVER_IP+":"+str(SERVER_PORT)
 
 intents = discord.Intents.default()
 bot = discord.Client(intents=intents)
@@ -84,12 +86,13 @@ class ConfirmView(ui.View):
         self.value = False
         self.stop()
 
-@bot.tree.command(name='init', description='Begins the initalisation process in the current channel')
-async def init(interaction: discord.Interaction):
-    permissions = interaction.user.resolved_permissions
-    if permissions.administrator:
+@bot.tree.command(name='init', description='Begins the stage striking process in the current channel')
+@app_commands.describe(stream_match="Connects the banning interface to the stream tool. Can only be used by stream moderators.")
+async def init(interaction: discord.Interaction, stream_match:bool=False):
+    user = interaction.user
+    if stream_match and (user.permissions.administrator or user.get_role()):
         pass
-    
+
     view = ConfirmView()
     await interaction.response.send_message('erm', view=view, ephemeral=True)
     await view.wait()

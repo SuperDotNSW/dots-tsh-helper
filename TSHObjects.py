@@ -1,4 +1,5 @@
 from typing import Optional
+from math import ceil
 
 class Ruleset():
     banByMaxGames:dict = {}
@@ -15,7 +16,11 @@ class Ruleset():
     useDSR:bool = False
     useMDSR:bool = True
     videogame:str = ""
-    
+    best_of:int = 3
+
+    def games_to_win(self) -> int:
+        return ceil(float(self.best_of) / 2.0)
+
     def update_from_tsh_data(self, data:dict):
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
