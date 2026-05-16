@@ -1,6 +1,24 @@
 from typing import Optional
 from math import ceil
 
+class Stage():
+    codename:str = ""
+    display_name:str = ""
+    icon_path:str = ""
+
+    def __init__(self, stage_data:dict):
+        self.codename = stage_data['codename']
+        self.display_name = stage_data['display_name']
+        self.icon_path = stage_data['path']
+    
+    def as_dict(self) -> dict:
+        return {
+            'codename': self.codename,
+            'display_name': self.display_name,
+            'icon': self.icon_path
+        }
+
+
 class Ruleset():
     banByMaxGames:dict = {}
     banCount:int = 3
@@ -25,18 +43,35 @@ class Ruleset():
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
         self.banCount = d['banCount']
-        self.counterpickStages = d['counterpickStages']
         self.errors = d['errors']
         self.name = d['name']
-        self.neutralStages = d['neutralStages']
         self.strikeOrder = d['strikeOrder']
         self.useDSR = d['useDSR']
         self.useMDSR = d['useMDSR']
         self.videogame = d['videogame']
+
+        self.neutralStages:list[Stage]
+        self.counterpickStages:list[Stage]
+        self.neutralStages.clear()
+        self.counterpickStages.clear()
+        for stagedata in d['neutralStages']:
+            self.neutralStages.append(Stage(stagedata))
+        for stagedata in d['counterpickStages']:
+            self.counterpickStages.append(Stage(stagedata))
     
     def __init__(self, tsh_data:Optional[dict]=None):
         if tsh_data is not None:
             self.update_from_tsh_data(tsh_data)
+    
+    def find_stage_by_codename(self, codename:str) -> Stage:
+        for stage in self.neutralStages:
+            if codename == stage.codename:
+                return stage
+        for stage in self.counterpickStages:
+            if codename == stage.codename:
+                return stage
+        
+        return None
 
 class Player():
     r"""Represents a player participating in a bracket match"""
@@ -58,13 +93,14 @@ class State():
     currGame:int = 0
     currPlayer:int = 0
     currStep:int = 0
+    best_of:int = 3
     gentlemans:bool = False
     lastWinner:int = 0
     selectedStage:dict = {}
     stagesPicked:list = []
     stagesWon:dict = {}
     strikedBy:dict = {}
-    strikedStages:dict = {}
+    strikedStages:list[str]
     
     p1:Player = Player()
     p2:Player = Player()
@@ -73,20 +109,60 @@ class State():
         d = data['state']
         self.canRedo = d['canRedo']
         self.canUndo = d['canUndo']
-        self.currGame = d['currGame']
-        self.currPlayer = d['currPlayer']
-        self.currStep = d['currStep']
-        self.gentlemans = d['gentlemans']
-        self.lastWinner = d['lastWinner']
-        self.selectedStage = d['selectedStage']
-        self.stagesPicked = d['stagesPicked']
-        self.stagesWon = d['stagesWon']
-        self.strikedBy = d['strikedBy']
-        self.strikedStages = d['strikedStages']
+        self.currGame:int = d['currGame']
+        if d['currPlayer'] == 0:
+            self.currPlayer = self.p1
+        else:
+            self.currPlayer = self.p2
+        self.currStep:int = d['currStep']
+        self.best_of:int = data['best_of']
+        self.gentlemans:bool = d['gentlemans']
+        self.lastWinner:int = d['lastWinner']
+        self.selectedStage:str = d['selectedStage']
+        self.stagesPicked:list[str] = d['stagesPicked']
+        self.stagesWon:list = d['stagesWon']
+        self.strikedBy:list = d['strikedBy']
+        self.strikedStages:list = d['strikedStages']
 
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
+
+    def get_all_striked_stage_codenames(self) -> list[str]:
+        stages:list[str] = []
+        for step in self.strikedStages:
+            for stage in step:
+                stages.append(stage)
+        
+        return stages
     
+    def get_confirmed_striked_stage_codenames(self) -> list[str]:
+        stages:list[str] = []
+        for i in range(len(self.strikedStages)):
+            if i >= self.currStep:
+                continue
+            for stage in self.strikedStages[i]:
+                stages.append(stage)
+        
+        return stages
+
+    def get_pending_striked_stage_codenames(self) -> list[str]:
+        return self.strikedStages[self.currStep]
+    
+    def can_strike(self, ruleset:Ruleset) -> bool:
+        stages_to_strike:int = 0
+        if self.currGame == 0:
+            if self.currStep == len(ruleset.strikeOrder):
+                return False
+            return ruleset.strikeOrder[self.currStep] > len(self.get_pending_striked_stage_codenames())
+
+        if self.best_of == 0:
+            return True
+
+        if ruleset.banCount == 0:
+            return ruleset.banByMaxGames[self.best_of] > len(self.get_pending_striked_stage_codenames())
+        else:
+            return ruleset.banCount > len(self.get_pending_striked_stage_codenames())
+
     def __init__(self, tsh_data:Optional[dict]=None):
         if tsh_data is not None:
             self.update_from_tsh_data(tsh_data)
