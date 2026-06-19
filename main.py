@@ -2,26 +2,31 @@ import config
 from os import getenv
 import discord
 from discord import app_commands
-from discord import ui
 from discord.ext import commands
 from dotenv import load_dotenv
 
-import random
+from TSH import TSHCommunicator
+from TSH.TSHObjects import Stage, Ruleset, State
 
-import TSH.TSHCommunicator
-from TSH.TSHObjects import Stage
+import gamelogic
+from gamelogic import GameInstance
 
+from views import AcceptOrDenyDuelRequest
+
+from random import randint
+from datetime import datetime
+
+
+# Bot Setup
 load_dotenv()
 TOKEN = getenv("TOKEN")
-
 intents = discord.Intents.default()
 # intents.message_content = True
 bot = commands.Bot(intents=intents, command_prefix=commands.when_mentioned_or("."))
 # bot.tree = app_commands.CommandTree(bot)
 
-TSHCommunicator.fetch_data()
-current_ruleset = TSHCommunicator.current_ruleset
-current_state = TSHCommunicator.current_state
+# Globals Setup
+active_instances:list[GameInstance] = []
 
 # Runs only once at during bot initialisation
 async def setup_hook():
@@ -29,6 +34,7 @@ async def setup_hook():
     assert bot.user is not None
     assert config.get_stream_manager_role_id() != 0
     await bot.tree.sync()
+    print("END SETUP HOOK")
 
 # Runs every time the bot connects to discord
 # This can re-run if the bot loses connection somehow and reconnects.
@@ -60,94 +66,71 @@ async def sync(ctx: commands.Context):
     synced = await ctx.bot.tree.sync()
     await ctx.send(f"Synced {len(synced)} commands globally")
 
-class StageButton(discord.ui.Button):
-    def __init__(self, stage_object:Stage, row:int=0):
-        self.stage:Stage = stage_object
-        super().__init__(label=self.stage.display_name, row=row, style=self.get_style(), disabled=self.get_disabled())
-    
-    def get_style(self) -> discord.ButtonStyle:
-        if self.stage.codename in current_state.get_all_striked_stage_codenames():
-            return discord.ButtonStyle.red
-        else:
-            return discord.ButtonStyle.gray
-    
-    def get_disabled(self) -> bool:
-        if self.stage.codename in current_state.get_confirmed_striked_stage_codenames():
-            return True
-        if self.stage.codename in current_state.get_pending_striked_stage_codenames():
-            return False
-        return not current_state.can_strike(current_ruleset)
-        
-    async def callback(self, interaction:discord.Interaction) -> None:
-        TSHCommunicator.post_click_stage(self.stage)
-        self.view.update_buttons()
-        await interaction.response.edit_message(view=self.view)
+@bot.tree.command(name='stream_match', description='Begins the stage striking process in the current channel')
+@app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
+@app_commands.default_permissions()
+async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
+    if p1 == p2:
+        await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
+        return
 
-class ConfirmView(ui.View):
-    def __init__(self):
-        super().__init__()
-        self.value = None
+    gamestate = State(tsh_data=TSHCommunicator.fetch_data())
+    gamestate.p1.discord_user_id = p1.id
+    gamestate.p2.discord_user_id = p2.id
 
-        from math import floor
-        for i in range(len(current_ruleset.neutralStages)):
-            self.add_item(StageButton(current_ruleset.neutralStages[i], floor(float(i)/5.0)))
-        
-        if current_state.currGame != 0:
-            for i in range(len(current_ruleset.counterpickStages)):
-                self.add_item(StageButton(current_ruleset.counterpickStages[i], floor(float(i + len(current_ruleset.neutralStages))/5.0)))
-    
-    def update_buttons(self):
-        for child in self.children:
-            child:discord.Button = child
-            if isinstance(child, StageButton):
-                child:StageButton = child
-                child.style = child.get_style()
-                child.disabled = child.get_disabled()
+    TSHCommunicator.post_reset_stage_strike()
+    TSHCommunicator.post_rps_win(randint(0,1))
 
-
-    confirm_row:int = min(len(current_ruleset.neutralStages), 4)
-
-    # When the confirm button is pressed, set the inner value to `True` and
-    # stop the View from listening to more input.
-    @discord.ui.button(label='Confirm', style=discord.ButtonStyle.green, row=confirm_row)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        TSHCommunicator.post_confirm_stage_strike()
-        self.update_buttons()
-        await interaction.response.edit_message(content=current_state.currPlayer.display_name, view=self)
-    
-    # This one is similar to the confirmation button except sets the inner value to `False`
-    @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey, row=confirm_row)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        TSHCommunicator.post_reset_stage_strike()
-        await interaction.response.edit_message(content='Cancelled', view=None)
-        self.value = False
-        self.stop()
-    
-    @discord.ui.button(label='Undo', style=discord.ButtonStyle.grey, row=confirm_row)
-    async def undo(self, interaction: discord.Interaction, button: discord.ui.Button):
-        TSHCommunicator.post_stage_strike_undo()
-        self.update_buttons()
-        await interaction.response.edit_message(view=self)
-
-@bot.tree.command(name='init', description='Begins the stage striking process in the current channel')
-@app_commands.describe(stream_match="Connects the banning interface to the stream tool. Can only be used by stream moderators.")
-async def init(interaction: discord.Interaction, stream_match:bool=False):
-    user = interaction.user
-    if stream_match and (user.permissions.administrator or user.get_role(config.get_stream_manager_role_id())):
-        TSHCommunicator.post_reset_stage_strike()
-        TSHCommunicator.post_rps_win(random.randint(0,1))
-    
-    view = ConfirmView()
-    view.timeout = None
-    await interaction.response.send_message(current_state.currPlayer.display_name, view=view)
-    await view.wait()
-    if view.value is None:
-        print('Timed out')
-    elif view.value:
-        print('Selected Stage: ' + str(view.value))
-    else:
-        print('Cancelled')
+    # view = ConfirmView()
+    # view.timeout = None
+    await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">")
+    # await view.wait()
+    # if view.value is None:
+    #     print('Timed out')
+    # elif view.value:
+    #     print('Selected Stage: ' + str(view.value))
+    # else:
+    #     print('Cancelled')
     # await interaction.response.send_modal(Feedback())
+
+def get_unique_instance_id() -> int:
+    uniqueID:int = randint(1, 256)
+    for instance in active_instances:
+        if instance.ID == uniqueID:
+            uniqueID = get_unique_instance_id()
+            return uniqueID
+
+@bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
+@app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
+async def start_match(interaction: discord.Interaction, opponent:discord.User, best_of:int):
+    if opponent == interaction.user:
+        await interaction.response.send_message(content="Cannot start: You cannot start a match against yourself.", ephemeral=True)
+        return
+
+    if best_of % 2 != 1 or best_of < 1:
+        await interaction.response.send_message(content="Cannot start: `best_of` must be an odd number above 0.", ephemeral=True)
+        return
+
+    if best_of > config.get_max_best_of():
+        await interaction.response.send_message(content="Cannot start: Sets cannot be longer than a best of "+str(config.get_max_best_of), ephemeral=True)
+
+    for instance in active_instances:
+        # Check if user sending command is already in a match
+        if instance.state.p1.discord_user_id == interaction.user.id or\
+            instance.state.p2.discord_user_id == interaction.user.id:
+            await interaction.response.send_message(content="Cannot start: You are already in match #"+str(instance.ID)+".", ephemeral=True)
+            return
+
+        # Check if requested opponent is already in a match
+        if instance.state.p1.discord_user_id == opponent.id or\
+            instance.state.p2.discord_user_id == opponent.id:
+            await interaction.response.send_message(content="Cannot start: <@"+opponent.id+"> is already participating in match #"+str(instance.ID)+".", ephemeral=True)
+            return
+    
+    embed:discord.Embed = discord.Embed(title="Duel Request", colour=discord.Colour.gold(), \
+        description="<@"+str(interaction.user.id)+"> has requested for a best of "+str(best_of)+" match with you.\n(Expires in 60s)",\
+            timestamp=datetime.utcnow())
+    await interaction.response.send_message(content="<@"+str(opponent.id)+">", embed=embed, view=AcceptOrDenyDuelRequest(opponent))
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

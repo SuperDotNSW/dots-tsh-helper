@@ -2,6 +2,11 @@ from typing import Optional
 from math import ceil
 
 class Stage():
+    """
+    Represents a stage with a codename, display name and icon path\n
+    Can also be serialized to a dict for communicating with TSH
+    """
+    
     codename:str = ""
     display_name:str = ""
     icon_path:str = ""
@@ -20,6 +25,11 @@ class Stage():
 
 
 class Ruleset():
+    """
+    Contains all information related to ruleset, stagelists, etc.\n
+    This object should rarely change throughout use
+    """
+
     def __init__(self, tsh_data:Optional[dict]=None):
         self.banByMaxGames:dict = {}
         self.banCount:int = 3
@@ -35,20 +45,14 @@ class Ruleset():
         self.useDSR:bool = False
         self.useMDSR:bool = True
         self.videogame:str = ""
-        self.best_of:int = 3
 
         if tsh_data is not None:
             self.update_from_tsh_data(tsh_data)
-
-    @property
-    def games_to_win(self) -> int:
-        return ceil(float(self.best_of) / 2.0)
 
     def update_from_tsh_data(self, data:dict):
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
         self.banCount = d['banCount']
-        self.best_of = data['best_of']
         self.errors = d['errors']
         self.name = d['name']
         self.strikeOrder = d['strikeOrder']
@@ -85,8 +89,11 @@ class Player():
         self.discord_user_id = discord_user_id
 
 class State():
+    """
+    Contains all state information of the current match.
+    """
     # From the 'state' object retrieved from /ruleset
-    def __init__(self, tsh_data:Optional[dict]=None):
+    def __init__(self, best_of:int = 3, tsh_data:Optional[dict]=None):
         self.canRedo:bool = False
         self.canUndo:bool = True
         self.currGame:int = 0
@@ -99,11 +106,13 @@ class State():
         self.stagesWon:dict = {}
         self.strikedBy:dict = {}
         self.strikedStages:list[str]
+        self.best_of = best_of
         
         self.p1:Player = Player()
         self.p2:Player = Player()
 
         if tsh_data is not None:
+            self.best_of = tsh_data['best_of']
             self.update_from_tsh_data(tsh_data)
     
     def update_from_tsh_data(self, data:dict):
@@ -126,6 +135,10 @@ class State():
 
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
+    
+    @property
+    def games_to_win(self) -> int:
+        return ceil(float(self.best_of) / 2.0)
 
     def get_all_striked_stage_codenames(self) -> list[str]:
         stages:list[str] = []

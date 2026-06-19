@@ -1,16 +1,15 @@
 import requests
-from TSHObjects import State, Ruleset, Player, Stage
+from TSH.TSHObjects import Stage
 
 BASE_URL = "http://localhost:5000"
+TSH_BASE_DIR = ""
 
-current_state = State()
-current_ruleset = Ruleset()
+current_TSH_data:dict = {}
 
 def fetch_data() -> dict:
-    data = requests.get(f"{BASE_URL}/ruleset").json()
-    current_state.update_from_tsh_data(data)
-    current_ruleset.update_from_tsh_data(data)
-    return data
+    current_TSH_data = requests.get(f"{BASE_URL}/ruleset").json()
+    TSH_BASE_DIR = current_TSH_data['basedir']
+    return current_TSH_data
 
 def post_confirm_stage_strike():
     requests.post(f"{BASE_URL}/stage_strike_confirm_clicked")
