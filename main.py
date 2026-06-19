@@ -98,9 +98,9 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
 async def start_match(interaction: discord.Interaction, opponent:discord.User, best_of:int):
     # User error checks
-    if opponent == interaction.user:
-        await interaction.response.send_message(content="Cannot start: You cannot start a match against yourself.", ephemeral=True)
-        return
+    # if opponent == interaction.user:
+    #     await interaction.response.send_message(content="Cannot start: You cannot start a match against yourself.", ephemeral=True)
+    #     return
 
     if best_of % 2 != 1 or best_of < 1:
         await interaction.response.send_message(content="Cannot start: `best_of` must be an odd number above 0.", ephemeral=True)
@@ -137,7 +137,14 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         embed.description = "~~"+embed.description+"~~"
         await interaction.edit_original_response(embed=embed, view=None)
     elif view.value == True:
-        print("Duel Accepted")
+        message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
+        thread:discord.Thread = await message.create_thread(name="Match: "+interaction.user.display_name+" vs "+opponent.display_name, \
+            auto_archive_duration=4320, reason="Tournament Match")
+        
+        await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
+        await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
+        
+        # TODO: Create game instance and add it to active_instances[].
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

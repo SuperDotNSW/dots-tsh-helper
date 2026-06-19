@@ -13,7 +13,7 @@ class AcceptOrDenyDuelRequest(ui.View):
         if interaction.user != self.opponent:
             return
         
-        await interaction.response.edit_message(content="Match Request Accepted! Starting new match instance...", embed=None, view=None)
+        await interaction.response.edit_message(content="`Match Request Accepted! Starting new match instance...`", embed=None, view=None)
         self.value = True
         self.stop()
 
