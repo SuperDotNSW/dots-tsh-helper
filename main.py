@@ -96,12 +96,6 @@ class ConfirmView(ui.View):
         TSHCommunicator.post_confirm_stage_strike()
         self.update_buttons()
         await interaction.response.edit_message(content=current_state.currPlayer.display_name, view=self)
-
-    @discord.ui.button(label='Undo', style=discord.ButtonStyle.grey, row=confirm_row)
-    async def undo(self, interaction: discord.Interaction, button: discord.ui.Button):
-        TSHCommunicator.post_stage_strike_undo()
-        self.update_buttons()
-        await interaction.response.edit_message(view=self)
     
     # This one is similar to the confirmation button except sets the inner value to `False`
     @discord.ui.button(label='Cancel', style=discord.ButtonStyle.grey, row=confirm_row)
@@ -110,6 +104,12 @@ class ConfirmView(ui.View):
         await interaction.response.edit_message(content='Cancelled', view=None)
         self.value = False
         self.stop()
+    
+    @discord.ui.button(label='Undo', style=discord.ButtonStyle.grey, row=confirm_row)
+    async def undo(self, interaction: discord.Interaction, button: discord.ui.Button):
+        TSHCommunicator.post_stage_strike_undo()
+        self.update_buttons()
+        await interaction.response.edit_message(view=self)
     
 
 @bot.tree.command(name='init', description='Begins the stage striking process in the current channel')
