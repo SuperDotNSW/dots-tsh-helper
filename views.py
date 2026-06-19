@@ -5,14 +5,17 @@ class AcceptOrDenyDuelRequest(ui.View):
     def __init__(self, opponent=discord.User):
         super().__init__(timeout=60.0)
         self.opponent = opponent
+        self.value = None
         pass
     
     @ui.button(label="Accept", style=discord.ButtonStyle.green)
     async def accept(self, interaction:discord.Interaction, button:ui.button[AcceptOrDenyDuelRequest]):
-        if interaction.user != opponent:
+        if interaction.user != self.opponent:
             return
         
         await interaction.response.edit_message(content="Match Request Accepted! Starting new match instance...", embed=None, view=None)
+        self.value = True
+        self.stop()
 
 # class StageButton(ui.Button):
 #     def __init__(self, stage_object:Stage, row:int=0):

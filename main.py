@@ -14,7 +14,7 @@ from gamelogic import GameInstance
 from views import AcceptOrDenyDuelRequest
 
 from random import randint
-from datetime import datetime
+import datetime
 
 
 # Bot Setup
@@ -66,6 +66,13 @@ async def sync(ctx: commands.Context):
     synced = await ctx.bot.tree.sync()
     await ctx.send(f"Synced {len(synced)} commands globally")
 
+def get_unique_instance_id() -> int:
+    uniqueID:int = randint(1, 256)
+    for instance in active_instances:
+        if instance.ID == uniqueID:
+            uniqueID = get_unique_instance_id()
+            return uniqueID
+
 @bot.tree.command(name='stream_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions()
@@ -81,24 +88,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
-    # view = ConfirmView()
-    # view.timeout = None
     await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">")
-    # await view.wait()
-    # if view.value is None:
-    #     print('Timed out')
-    # elif view.value:
-    #     print('Selected Stage: ' + str(view.value))
-    # else:
-    #     print('Cancelled')
-    # await interaction.response.send_modal(Feedback())
-
-def get_unique_instance_id() -> int:
-    uniqueID:int = randint(1, 256)
-    for instance in active_instances:
-        if instance.ID == uniqueID:
-            uniqueID = get_unique_instance_id()
-            return uniqueID
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
@@ -129,8 +119,16 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
     
     embed:discord.Embed = discord.Embed(title="Duel Request", colour=discord.Colour.gold(), \
         description="<@"+str(interaction.user.id)+"> has requested for a best of "+str(best_of)+" match with you.\n(Expires in 60s)",\
-            timestamp=datetime.utcnow())
-    await interaction.response.send_message(content="<@"+str(opponent.id)+">", embed=embed, view=AcceptOrDenyDuelRequest(opponent))
+            timestamp=datetime.datetime.now(datetime.UTC))
+    view = AcceptOrDenyDuelRequest(opponent)
+    await interaction.response.send_message(content="<@"+str(opponent.id)+">", embed=embed, view=view)
+    await view.wait()
+    if view.value is None:
+        embed.title = "Duel Request (Timed Out)"
+        embed.description = "~~"+embed.description+"~~"
+        await interaction.edit_original_response(embed=embed, view=None)
+    elif view.value == True:
+        print("Duel Accepted")
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)
