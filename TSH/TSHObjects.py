@@ -20,22 +20,27 @@ class Stage():
 
 
 class Ruleset():
-    banByMaxGames:dict = {}
-    banCount:int = 3
-    counterpickStages:list = []
-    neutralStages:list = []
-    errors = []
-    name:str = ""
-    strikeOrder:dict = { 
-        0: 1, 
-        1: 2, 
-        2: 1
-    }
-    useDSR:bool = False
-    useMDSR:bool = True
-    videogame:str = ""
-    best_of:int = 3
+    def __init__(self, tsh_data:Optional[dict]=None):
+        self.banByMaxGames:dict = {}
+        self.banCount:int = 3
+        self.counterpickStages:list = []
+        self.neutralStages:list = []
+        self.errors = []
+        self.name:str = ""
+        self.strikeOrder:dict = { 
+            0: 1, 
+            1: 2, 
+            2: 1
+        }
+        self.useDSR:bool = False
+        self.useMDSR:bool = True
+        self.videogame:str = ""
+        self.best_of:int = 3
 
+        if tsh_data is not None:
+            self.update_from_tsh_data(tsh_data)
+
+    @property
     def games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)
 
@@ -43,6 +48,7 @@ class Ruleset():
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
         self.banCount = d['banCount']
+        self.best_of = data['best_of']
         self.errors = d['errors']
         self.name = d['name']
         self.strikeOrder = d['strikeOrder']
@@ -59,10 +65,6 @@ class Ruleset():
         for stagedata in d['counterpickStages']:
             self.counterpickStages.append(Stage(stagedata))
     
-    def __init__(self, tsh_data:Optional[dict]=None):
-        if tsh_data is not None:
-            self.update_from_tsh_data(tsh_data)
-    
     def find_stage_by_codename(self, codename:str) -> Stage:
         for stage in self.neutralStages:
             if codename == stage.codename:
@@ -76,35 +78,34 @@ class Ruleset():
 class Player():
     r"""Represents a player participating in a bracket match"""
 
-    # The Name that is displayed in messages referring to this player
-    display_name:str = ""
-    # The Discord user ID associated with the Player object
-    discord_user_id:int = 0
-
     def __init__(self, display_name:str="", discord_user_id:int=0):
+        # The Name that is displayed in messages referring to this player
         self.display_name = display_name
+        # The Discord user ID associated with the Player object
         self.discord_user_id = discord_user_id
 
 class State():
     # From the 'state' object retrieved from /ruleset
+    def __init__(self, tsh_data:Optional[dict]=None):
+        self.canRedo:bool = False
+        self.canUndo:bool = True
+        self.currGame:int = 0
+        self.currPlayer:int = 0
+        self.currStep:int = 0
+        self.gentlemans:bool = False
+        self.lastWinner:int = 0
+        self.selectedStage:dict = {}
+        self.stagesPicked:list = []
+        self.stagesWon:dict = {}
+        self.strikedBy:dict = {}
+        self.strikedStages:list[str]
+        
+        self.p1:Player = Player()
+        self.p2:Player = Player()
 
-    canRedo:bool = False
-    canUndo:bool = True
-    currGame:int = 0
-    currPlayer:int = 0
-    currStep:int = 0
-    best_of:int = 3
-    gentlemans:bool = False
-    lastWinner:int = 0
-    selectedStage:dict = {}
-    stagesPicked:list = []
-    stagesWon:dict = {}
-    strikedBy:dict = {}
-    strikedStages:list[str]
+        if tsh_data is not None:
+            self.update_from_tsh_data(tsh_data)
     
-    p1:Player = Player()
-    p2:Player = Player()
-
     def update_from_tsh_data(self, data:dict):
         d = data['state']
         self.canRedo = d['canRedo']
@@ -115,7 +116,6 @@ class State():
         else:
             self.currPlayer = self.p2
         self.currStep:int = d['currStep']
-        self.best_of:int = data['best_of']
         self.gentlemans:bool = d['gentlemans']
         self.lastWinner:int = d['lastWinner']
         self.selectedStage:str = d['selectedStage']
@@ -155,14 +155,10 @@ class State():
                 return False
             return ruleset.strikeOrder[self.currStep] > len(self.get_pending_striked_stage_codenames())
 
-        if self.best_of == 0:
+        if ruleset.best_of == 0:
             return True
 
         if ruleset.banCount == 0:
-            return ruleset.banByMaxGames[self.best_of] > len(self.get_pending_striked_stage_codenames())
+            return ruleset.banByMaxGames[ruleset.best_of] > len(self.get_pending_striked_stage_codenames())
         else:
             return ruleset.banCount > len(self.get_pending_striked_stage_codenames())
-
-    def __init__(self, tsh_data:Optional[dict]=None):
-        if tsh_data is not None:
-            self.update_from_tsh_data(tsh_data)

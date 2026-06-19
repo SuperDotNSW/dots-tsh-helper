@@ -25,6 +25,6 @@ def post_stage_strike_undo():
 def post_rps_win(winner:int):
     requests.post(f"{BASE_URL}/stage_strike_rps_win", json={'winner': winner})
 
-def request_strike_stage(stage_object:Stage):
+def post_click_stage(stage_object:Stage):
     requests.post(f"{BASE_URL}/stage_strike_stage_clicked", json=stage_object.as_dict())
     fetch_data()
