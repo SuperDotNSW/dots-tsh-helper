@@ -107,29 +107,29 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         return
 
     if best_of > config.get_max_best_of():
-        await interaction.response.send_message(content="Cannot start: Sets cannot be longer than a best of "+str(config.get_max_best_of), ephemeral=True)
+        await interaction.response.send_message(content=f"Cannot start: Sets cannot be longer than a best of {config.get_max_best_of}", ephemeral=True)
 
     for instance in active_instances:
         # Check if user sending command is already in a match
         if instance.state.p1.discord_user_id == interaction.user.id or\
             instance.state.p2.discord_user_id == interaction.user.id:
-            await interaction.response.send_message(content="Cannot start: You are already in match #"+str(instance.ID)+".", ephemeral=True)
+            await interaction.response.send_message(content=f"Cannot start: You are already in match #{instance.ID}.", ephemeral=True)
             return
 
         # Check if requested opponent is already in a match
         if instance.state.p1.discord_user_id == opponent.id or\
             instance.state.p2.discord_user_id == opponent.id:
-            await interaction.response.send_message(content="Cannot start: <@"+opponent.id+"> is already participating in match #"+str(instance.ID)+".", ephemeral=True)
+            await interaction.response.send_message(content=f"Cannot start: <@{opponent.id}> is already participating in match #{instance.ID}.", ephemeral=True)
             return
     
     # Create embed details
     embed:discord.Embed = discord.Embed(title="Duel Request", colour=discord.Colour.gold(), \
-        description="<@"+str(interaction.user.id)+"> has requested for a best of "+str(best_of)+" match with you.\n(Expires in 60s)",\
+        description=f"<@{interaction.user.id}> has requested for a best of {best_of} match with you.\n(Expires in {config.get_match_request_timeout()}s)",\
             timestamp=datetime.datetime.now(datetime.UTC))
     # Create view and pass requested opponent
     view = AcceptOrDenyDuelRequest(opponent)
     # Send message
-    await interaction.response.send_message(content="<@"+str(opponent.id)+">", embed=embed, view=view)
+    await interaction.response.send_message(content=f"<@{opponent.id}>", embed=embed, view=view)
     # Wait for view to timeout or close
     await view.wait()
     if view.value is None:
@@ -145,6 +145,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
         
         # TODO: Create game instance and add it to active_instances[].
+        await thread.send(content="TEST")
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

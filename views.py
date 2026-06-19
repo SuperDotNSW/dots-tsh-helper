@@ -1,9 +1,10 @@
 import discord
 from discord import ui
+import config
 
 class AcceptOrDenyDuelRequest(ui.View):
     def __init__(self, opponent=discord.User):
-        super().__init__(timeout=60.0)
+        super().__init__(timeout=config.get_match_request_timeout())
         self.opponent = opponent
         self.value = None
         pass
