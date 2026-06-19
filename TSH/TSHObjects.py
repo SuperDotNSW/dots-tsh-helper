@@ -6,15 +6,11 @@ class Stage():
     Represents a stage with a codename, display name and icon path\n
     Can also be serialized to a dict for communicating with TSH
     """
-    
-    codename:str = ""
-    display_name:str = ""
-    icon_path:str = ""
 
     def __init__(self, stage_data:dict):
-        self.codename = stage_data['codename']
-        self.display_name = stage_data['display_name']
-        self.icon_path = stage_data['path']
+        self.codename:str = stage_data['codename']
+        self.display_name:str = stage_data['display_name']
+        self.icon_path:str = stage_data['path']
     
     def as_dict(self) -> dict:
         return {
@@ -27,7 +23,7 @@ class Stage():
 class Ruleset():
     """
     Contains all information related to ruleset, stagelists, etc.\n
-    This object should rarely change throughout use
+    This object should rarely be modified
     """
 
     def __init__(self, tsh_data:Optional[dict]=None):

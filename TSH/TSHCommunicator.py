@@ -1,15 +1,17 @@
 import requests
 from TSH.TSHObjects import Stage
 
-BASE_URL = "http://localhost:5000"
-TSH_BASE_DIR = ""
+class Share():
+    base_dir:str = ""
+    current_data:dict = {}
 
-current_TSH_data:dict = {}
+BASE_URL:str = "http://localhost:5000"
+SHARE:Share = Share()
 
 def fetch_data() -> dict:
-    current_TSH_data = requests.get(f"{BASE_URL}/ruleset").json()
-    TSH_BASE_DIR = current_TSH_data['basedir']
-    return current_TSH_data
+    SHARE.current_data = requests.get(f"{BASE_URL}/ruleset").json()
+    SHARE.base_dir = SHARE.current_data['basedir']
+    return SHARE.current_data
 
 def post_confirm_stage_strike():
     requests.post(f"{BASE_URL}/stage_strike_confirm_clicked")

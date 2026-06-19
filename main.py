@@ -27,12 +27,12 @@ bot = commands.Bot(intents=intents, command_prefix=commands.when_mentioned_or(".
 
 # Globals Setup
 active_instances:list[GameInstance] = []
+TSHCommunicator.fetch_data()
 
 # Runs only once at during bot initialisation
 async def setup_hook():
     print("SETUP HOOK BEGIN:")
     assert bot.user is not None
-    assert config.get_stream_manager_role_id() != 0
     await bot.tree.sync()
     print("END SETUP HOOK")
 
@@ -88,11 +88,16 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
-    await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">")
+    embed:discord.Embed = discord.Embed(title="Stream Match",\
+        description="Please strike stages at http://172.26.3.130:5000/stage-strike-app",\
+            colour=discord.Colour.red())
+    
+    await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">", embed=embed)
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
 async def start_match(interaction: discord.Interaction, opponent:discord.User, best_of:int):
+    # User error checks
     if opponent == interaction.user:
         await interaction.response.send_message(content="Cannot start: You cannot start a match against yourself.", ephemeral=True)
         return
@@ -117,11 +122,15 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
             await interaction.response.send_message(content="Cannot start: <@"+opponent.id+"> is already participating in match #"+str(instance.ID)+".", ephemeral=True)
             return
     
+    # Create embed details
     embed:discord.Embed = discord.Embed(title="Duel Request", colour=discord.Colour.gold(), \
         description="<@"+str(interaction.user.id)+"> has requested for a best of "+str(best_of)+" match with you.\n(Expires in 60s)",\
             timestamp=datetime.datetime.now(datetime.UTC))
+    # Create view and pass requested opponent
     view = AcceptOrDenyDuelRequest(opponent)
+    # Send message
     await interaction.response.send_message(content="<@"+str(opponent.id)+">", embed=embed, view=view)
+    # Wait for view to timeout or close
     await view.wait()
     if view.value is None:
         embed.title = "Duel Request (Timed Out)"
