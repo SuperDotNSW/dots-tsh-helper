@@ -31,6 +31,11 @@ class GameInstance():
         embed.set_footer(f"#{self.ID}")
         await self.current_message.reply(embed=embed)
     
+    def get_available_stages(self) -> list[Stage]:
+        all_striked_stages = self.state.get_all_striked_stages()
+        return [stage for stage in current_ruleset.neutralStages if not (stage in all_striked_stages)]
+    
+    # Instance gets terminated when this function ends
     async def run_match(self):
         # Do RPS for first ban
         self.state.currPlayer = randint(0, 1)
@@ -47,24 +52,22 @@ class GameInstance():
         # Take turns banning based on strikeOrder
         for step in range(len(current_ruleset.strikeOrder)):
             # Create stage select ui
-            stage_ui:FileEmbedContainer = create_stage_embeds(self.state)
+            stage_ui:FileEmbedContainer = create_stage_embeds(self, self.state)
             # Find remaining pool of stages
-            all_striked_stages = self.state.get_all_striked_stages()
-            available_stages = [stage for stage in current_ruleset.neutralStages if stage not in all_striked_stages]
+            available_stages = self.get_available_stages()
             # Create banning input
             # Only starter stages for first round, uses strikeOrder
             view:views.StageBanningInput = views.StageBanningInput(
                 ban_count=current_ruleset.strikeOrder[self.state.currStep],
                 available_stages=available_stages,
-                target_user=self.state.get_current_player()
+                target_user=self.state.get_current_player().discord_user
             )
-
+            
             # Send messsage
             if self.current_message:
                 await self.current_message.edit(embeds=stage_ui.embeds, view=view)
             else:
                 self.current_message = await self.thread.send(embeds=stage_ui.embeds, files=stage_ui.files, view=view)
-            
             await view.wait()
             if view.values is None:
                 # Something went wrong (timeout most likely)
@@ -72,6 +75,7 @@ class GameInstance():
                 return
             else:
                 # Ban Stage(s)
+                print(f"MATCH #{self.ID}: {view.target_user.display_name} requested ban: {view.values}")
                 for codename in view.values:
                     stage:Stage = current_ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
@@ -80,17 +84,23 @@ class GameInstance():
                 # Increment step
                 self.state.currStep += 1
                 self.state.strikedStages.append([])
+        
+        # TODO: Display chosen stage
+        # TODO: Give buttons to report scores
+        print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
+        return
 
         for game in range(1, self.state.best_of):
             # Loop through rounds until winner
-            print(f"MATCH #{self.ID}: GAME {game} START")
+            print(f"MATCH #{self.ID}: GAME {game+1} START")
             self.state.currGame = game
 
             # Check for winner
             for player_id in range(len(self.state.players)):
                 if self.state.get_games_won(player_id) >= self.state.games_to_win:
                     # Player has won
-                    print(f"{self.state.players[player].display_name} Has won the set! (Match #{self.ID})")
+                    # TODO: Display all stages played on and final scores
+                    print(f"MATCH #{self.ID}: {self.state.players[player].display_name} Has won the set!")
                     return
 
 def stage_to_file(stage:Stage) -> File:
@@ -108,8 +118,8 @@ class FileEmbedContainer:
     def __init__(self):
         self.embeds:list[discord.Embed] = []
         self.files:list[File] = []
-def create_stage_embeds(state:State) -> FileEmbedContainer:
-
+def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContainer:
+    # Lists through all active stages and creates embeds & files for them
     def _create_embeds(stages:list[Stage], neutral:bool=True) -> FileEmbedContainer:
         r = FileEmbedContainer()
         for stage in stages:
@@ -137,6 +147,13 @@ def create_stage_embeds(state:State) -> FileEmbedContainer:
         return r
     
     result = FileEmbedContainer()
+
+    # Add player indicator
+    player_embed:BaseEmbed = BaseEmbed(instance.ID)
+    player_embed.title = f"{state.get_current_player().discord_user.display_name} is banning"
+    player_embed.set_thumbnail(url=state.get_current_player().discord_user.display_avatar.url)
+
+    result.embeds.append(player_embed)
 
     if state.currGame == 0:
         # Game 1
