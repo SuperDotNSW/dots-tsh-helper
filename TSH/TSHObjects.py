@@ -1,5 +1,6 @@
 from typing import Optional
 from math import ceil
+import discord
 
 class Stage():
     """
@@ -29,8 +30,8 @@ class Ruleset():
     def __init__(self, tsh_data:Optional[dict]=None):
         self.banByMaxGames:dict = {}
         self.banCount:int = 3
-        self.counterpickStages:list = []
-        self.neutralStages:list = []
+        self.counterpickStages:list[Stage] = []
+        self.neutralStages:list[Stage] = []
         self.errors = []
         self.name:str = ""
         self.strikeOrder:dict = { 
@@ -78,11 +79,13 @@ class Ruleset():
 class Player():
     r"""Represents a player participating in a bracket match"""
 
-    def __init__(self, display_name:str="", discord_user_id:int=0):
-        # The Name that is displayed in messages referring to this player
-        self.display_name = display_name
+    def __init__(self, display_name:str="", discord_user:discord.User=None):
         # The Discord user ID associated with the Player object
-        self.discord_user_id = discord_user_id
+        self.discord_user:discord.User = discord_user
+        # The Name that is displayed in messages referring to this player
+        self.display_name:str = ""
+        if discord_user:
+            self.display_name = discord_user.display_name
 
 class State():
     """
@@ -91,21 +94,27 @@ class State():
     # From the 'state' object retrieved from /ruleset
     def __init__(self, best_of:int = 3, tsh_data:Optional[dict]=None):
         self.canRedo:bool = False
-        self.canUndo:bool = True
+        self.canUndo:bool = False
         self.currGame:int = 0
         self.currPlayer:int = 0
-        self.currStep:int = 0
+        self.currStep:int = -1
         self.gentlemans:bool = False
-        self.lastWinner:int = 0
-        self.selectedStage:dict = {}
+        self.lastWinner:int = -1
+        self.selectedStage:str = None
         self.stagesPicked:list = []
-        self.stagesWon:dict = {}
-        self.strikedBy:dict = {}
-        self.strikedStages:list[str]
+        self.stagesWon:list[[list[str]]] = [[], []]
+        self.strikedBy:list[[list[str]]] = [[], []]
+        self.strikedStages:list[[list[str]]] = [[]]
+        assert best_of % 2 == 1
         self.best_of = best_of
         
         self.p1:Player = Player()
         self.p2:Player = Player()
+
+        self.players:dict[int, Player] = {
+            0 : self.p1,
+            1 : self.p2
+        }
 
         if tsh_data is not None:
             self.best_of = tsh_data['best_of']
@@ -115,19 +124,19 @@ class State():
         d = data['state']
         self.canRedo = d['canRedo']
         self.canUndo = d['canUndo']
-        self.currGame:int = d['currGame']
+        self.currGame = d['currGame']
         if d['currPlayer'] == 0:
             self.currPlayer = self.p1
         else:
             self.currPlayer = self.p2
-        self.currStep:int = d['currStep']
-        self.gentlemans:bool = d['gentlemans']
-        self.lastWinner:int = d['lastWinner']
-        self.selectedStage:str = d['selectedStage']
-        self.stagesPicked:list[str] = d['stagesPicked']
-        self.stagesWon:list = d['stagesWon']
-        self.strikedBy:list = d['strikedBy']
-        self.strikedStages:list = d['strikedStages']
+        self.currStep = d['currStep']
+        self.gentlemans = d['gentlemans']
+        self.lastWinner = d['lastWinner']
+        self.selectedStage = d['selectedStage']
+        self.stagesPicked = d['stagesPicked']
+        self.stagesWon = d['stagesWon']
+        self.strikedBy = d['strikedBy']
+        self.strikedStages = d['strikedStages']
 
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
@@ -135,6 +144,11 @@ class State():
     @property
     def games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)
+
+    def get_games_won(self, player_id:int) -> int:
+        if len(self.stagesWon) == 0:
+            return 0
+        return len(self.stagesWon[player_id])
 
     def get_all_striked_stage_codenames(self) -> list[str]:
         stages:list[str] = []

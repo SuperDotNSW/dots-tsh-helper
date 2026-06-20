@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from TSH import TSHCommunicator
 from TSH.TSHObjects import Stage, Ruleset, State
 
-import gamelogic
 from gamelogic import GameInstance
 
 from views import AcceptOrDenyDuelRequest
@@ -26,7 +25,7 @@ bot = commands.Bot(intents=intents, command_prefix=commands.when_mentioned_or(".
 # bot.tree = app_commands.CommandTree(bot)
 
 # Globals Setup
-active_instances:list[GameInstance] = []
+active_instances:dict[int, GameInstance] = {}
 TSHCommunicator.fetch_data()
 
 # Runs only once at during bot initialisation
@@ -68,10 +67,16 @@ async def sync(ctx: commands.Context):
 
 def get_unique_instance_id() -> int:
     uniqueID:int = randint(1, 256)
-    for instance in active_instances:
-        if instance.ID == uniqueID:
-            uniqueID = get_unique_instance_id()
-            return uniqueID
+    if len(active_instances) > 0:
+        for instID in active_instances.keys():
+            if instID == uniqueID:
+                uniqueID = get_unique_instance_id()
+                print(f"Found unique ID: #{uniqueID}")
+                return uniqueID
+        print("ERROR: Couldnt find a unique instance id!")
+        return None
+    else:
+        return uniqueID
 
 @bot.tree.command(name='stream_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
@@ -82,8 +87,8 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
         return
 
     gamestate = State(tsh_data=TSHCommunicator.fetch_data())
-    gamestate.p1.discord_user_id = p1.id
-    gamestate.p2.discord_user_id = p2.id
+    gamestate.p1.discord_user = p1
+    gamestate.p2.discord_user = p2
 
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
@@ -99,27 +104,27 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 async def start_match(interaction: discord.Interaction, opponent:discord.User, best_of:int):
     # User error checks
     # if opponent == interaction.user:
-    #     await interaction.response.send_message(content="Cannot start: You cannot start a match against yourself.", ephemeral=True)
+    #     await interaction.response.send_message(content="You cannot start a match against yourself.", ephemeral=True)
     #     return
 
     if best_of % 2 != 1 or best_of < 1:
-        await interaction.response.send_message(content="Cannot start: `best_of` must be an odd number above 0.", ephemeral=True)
+        await interaction.response.send_message(content="`best_of` must be an odd number above 0.", ephemeral=True)
         return
 
     if best_of > config.get_max_best_of():
-        await interaction.response.send_message(content=f"Cannot start: Sets cannot be longer than a best of {config.get_max_best_of}", ephemeral=True)
+        await interaction.response.send_message(content=f"Sets cannot be longer than a best of {config.get_max_best_of()}", ephemeral=True)
 
     for instance in active_instances:
         # Check if user sending command is already in a match
-        if instance.state.p1.discord_user_id == interaction.user.id or\
-            instance.state.p2.discord_user_id == interaction.user.id:
-            await interaction.response.send_message(content=f"Cannot start: You are already in match #{instance.ID}.", ephemeral=True)
+        if instance.state.p1.discord_user == interaction.user or\
+            instance.state.p2.discord_user == interaction.user:
+            await interaction.response.send_message(content=f"You are already in match #{instance.ID}.", ephemeral=True)
             return
 
         # Check if requested opponent is already in a match
-        if instance.state.p1.discord_user_id == opponent.id or\
-            instance.state.p2.discord_user_id == opponent.id:
-            await interaction.response.send_message(content=f"Cannot start: <@{opponent.id}> is already participating in match #{instance.ID}.", ephemeral=True)
+        if instance.state.p1.discord_user == opponent or\
+            instance.state.p2.discord_user == opponent:
+            await interaction.response.send_message(content=f"<@{opponent.id}> is already participating in match #{instance.ID}.", ephemeral=True)
             return
     
     # Create embed details
@@ -144,8 +149,17 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
         
-        # TODO: Create game instance and add it to active_instances[].
-        await thread.send(content="TEST")
+        new_state:State = State(best_of)
+        new_state.p1.discord_user = interaction.user
+        new_state.p2.discord_user = opponent
+        # Create game instance and add it to active_instances[].
+        instance_id:int = get_unique_instance_id()
+        active_instances[instance_id] = GameInstance(instance_id, thread=thread, state=new_state)
+        # Run match
+        await active_instances[instance_id].run_match()
+        # Delete match after ending
+        active_instances.pop(instance_id)
+        print(f"Killed match instance #{instance_id}")
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

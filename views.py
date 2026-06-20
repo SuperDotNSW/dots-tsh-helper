@@ -1,13 +1,13 @@
 import discord
 from discord import ui
 import config
+from TSH.TSHObjects import Stage
 
 class AcceptOrDenyDuelRequest(ui.View):
     def __init__(self, opponent=discord.User):
         super().__init__(timeout=config.get_match_request_timeout())
         self.opponent = opponent
         self.value = None
-        pass
     
     @ui.button(label="Accept", style=discord.ButtonStyle.green)
     async def accept(self, interaction:discord.Interaction, button:ui.button[AcceptOrDenyDuelRequest]):
@@ -17,6 +17,46 @@ class AcceptOrDenyDuelRequest(ui.View):
         await interaction.response.edit_message(content="`Match Request Accepted! Starting new match instance...`", embed=None, view=None)
         self.value = True
         self.stop()
+    
+    async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
+        if interaction.user != self.opponent:
+            return False
+        else:
+            return True
+
+class StageBanSelector(ui.Select):
+    def __init__(self, options:list[discord.SelectOption], ban_count:int):
+        super().__init__(
+            options=options,
+            placeholder="Select Bans:", 
+            max_values=ban_count, 
+            min_values=ban_count
+        )
+    async def callback(self, interaction:discord.Interaction):
+        # TODO: Figure out why this callback refuses to run no matter what
+        await interaction.response.edit_message(view=None)
+
+class StageBanningInput(ui.View):
+    def __init__(self, *, ban_count:int, available_stages:list[Stage], target_user:discord.User):
+        super().__init__(timeout=None)
+        self.value:list[str] = []
+        self.ban_count:int = ban_count
+        self.target_user:discord.User = target_user
+
+        # Define select menu
+        self.ban_selector:StageBanSelector = StageBanSelector(
+            options=[discord.SelectOption(label=stage.display_name, value=stage.codename) for stage in available_stages], 
+            ban_count=ban_count
+        )
+        self.add_item(self.ban_selector)
+    
+    async def interaction_check(self, interaction:discord.Interaction) -> bool:
+        print(f"{interaction.user != self.target_user}")
+        if interaction.user != self.target_user:
+            return False
+        else:
+            return True
+
 
 # class StageButton(ui.Button):
 #     def __init__(self, stage_object:Stage, row:int=0):
