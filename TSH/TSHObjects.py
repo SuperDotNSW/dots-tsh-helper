@@ -83,9 +83,20 @@ class Player():
         # The Discord user ID associated with the Player object
         self.discord_user:discord.User = discord_user
         # The Name that is displayed in messages referring to this player
-        self.display_name:str = ""
+        self._display_name:str = display_name
         if discord_user:
-            self.display_name = discord_user.display_name
+            self._display_name = discord_user.display_name
+    
+    @property
+    def display_name(self) -> str:
+        if self._display_name == "" and self.discord_user:
+            return self.discord_user.display_name
+        else:
+            return self._display_name
+    
+    @display_name.setter
+    def display_name(self, value:str):
+        self._display_name = value
 
 class State():
     """

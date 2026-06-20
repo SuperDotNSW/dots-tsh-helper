@@ -142,7 +142,9 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         embed.title = "Duel Request (Timed Out)"
         embed.description = "~~"+embed.description+"~~"
         await interaction.edit_original_response(embed=embed, view=None)
+        await interaction.delete_original_response()
     elif view.value == True:
+        # Opponent has accepted the duel request, begin initalizing the match
         message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
         thread:discord.Thread = await message.create_thread(name="Match: "+interaction.user.display_name+" vs "+opponent.display_name, \
             auto_archive_duration=4320, reason="Tournament Match")
@@ -161,6 +163,8 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         # Delete match after ending
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")
+
+        await interaction.edit_original_response(content="Match has concluded.")
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

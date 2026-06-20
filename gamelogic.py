@@ -32,8 +32,13 @@ class GameInstance():
         await self.current_message.reply(embed=embed)
     
     def get_available_stages(self) -> list[Stage]:
+        # TODO: Account for DSR/MDSR
+
+        # Eliminate stages that have already been banned
         all_striked_stages = self.state.get_all_striked_stages()
-        return [stage for stage in current_ruleset.neutralStages if not (stage in all_striked_stages)]
+        result:list[Stage] = [stage for stage in current_ruleset.neutralStages if not (stage in all_striked_stages)]
+
+        return result
     
     # Instance gets terminated when this function ends
     async def run_match(self):
@@ -68,7 +73,10 @@ class GameInstance():
                 await self.current_message.edit(embeds=stage_ui.embeds, view=view)
             else:
                 self.current_message = await self.thread.send(embeds=stage_ui.embeds, files=stage_ui.files, view=view)
+            
+            # Wait for input
             await view.wait()
+
             if view.values is None:
                 # Something went wrong (timeout most likely)
                 await _send_error_message()
@@ -83,15 +91,17 @@ class GameInstance():
                 
                 # Increment step
                 self.state.currStep += 1
+                self.state.currPlayer = (self.state.currPlayer + 1) % 2
                 self.state.strikedStages.append([])
         
-        # TODO: Display chosen stage
         # TODO: Give buttons to report scores
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
+        selected_stage_embed:SelectedStageEmbed = SelectedStageEmbed(self.ID, self.get_available_stages()[0], self.state)
+        await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file])
         return
 
         for game in range(1, self.state.best_of):
-            # Loop through rounds until winner
+            # TODO: Loop through rounds until winner
             print(f"MATCH #{self.ID}: GAME {game+1} START")
             self.state.currGame = game
 
@@ -113,6 +123,21 @@ class BaseEmbed(discord.Embed):
     def __init__(self, instID:int):
         super().__init__(timestamp=datetime.datetime.now(datetime.UTC))
         self.set_footer(text=f"#{instID}")
+
+class SelectedStageEmbed(BaseEmbed):
+    """
+    Creates an embed to display the selected stage of the current round
+    """
+    def __init__(self, instID:int, stage:Stage, state:State):
+        super().__init__(instID=instID)
+        self.stage:Stage = stage
+        self.state:State = state
+        self.file:File = stage_to_file(self.stage)
+
+        self.colour = discord.Colour.green()
+        self.set_image(url=self.file.uri)
+        self.title = f"Game {self.state.currGame+1}:"
+        self.description = f"{self.stage.display_name}"
 
 class FileEmbedContainer:
     def __init__(self):
