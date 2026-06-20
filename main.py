@@ -115,6 +115,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.response.send_message(content=f"Sets cannot be longer than a best of {config.get_max_best_of()}", ephemeral=True)
 
     for instance in active_instances:
+        instance = active_instances[instance]
         # Check if user sending command is already in a match
         if instance.state.p1.discord_user == interaction.user or\
             instance.state.p2.discord_user == interaction.user:

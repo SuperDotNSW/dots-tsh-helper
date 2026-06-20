@@ -102,9 +102,9 @@ class State():
         self.lastWinner:int = -1
         self.selectedStage:str = None
         self.stagesPicked:list = []
-        self.stagesWon:list[[list[str]]] = [[], []]
-        self.strikedBy:list[[list[str]]] = [[], []]
-        self.strikedStages:list[[list[str]]] = [[]]
+        self.stagesWon:list[[list[Stage]]] = [[], []]
+        self.strikedBy:list[[list[Stage]]] = [[], []]
+        self.strikedStages:list[[list[Stage]]] = [[]]
         assert best_of % 2 == 1
         self.best_of = best_of
         
@@ -150,16 +150,16 @@ class State():
             return 0
         return len(self.stagesWon[player_id])
 
-    def get_all_striked_stage_codenames(self) -> list[str]:
-        stages:list[str] = []
+    def get_all_striked_stages(self) -> list[Stage]:
+        stages:list[Stage] = []
         for step in self.strikedStages:
             for stage in step:
                 stages.append(stage)
         
         return stages
     
-    def get_confirmed_striked_stage_codenames(self) -> list[str]:
-        stages:list[str] = []
+    def get_confirmed_striked_stages(self) -> list[Stage]:
+        stages:list[Stage] = []
         for i in range(len(self.strikedStages)):
             if i >= self.currStep:
                 continue
@@ -168,20 +168,25 @@ class State():
         
         return stages
 
-    def get_pending_striked_stage_codenames(self) -> list[str]:
+    def get_pending_striked_stages(self) -> list[Stage]:
+        if len(self.strikedStages) < self.currStep:
+            return []
         return self.strikedStages[self.currStep]
+    
+    def get_current_player(self) -> Player:
+        return self.players[self.currPlayer]
     
     def can_strike(self, ruleset:Ruleset) -> bool:
         stages_to_strike:int = 0
         if self.currGame == 0:
             if self.currStep == len(ruleset.strikeOrder):
                 return False
-            return ruleset.strikeOrder[self.currStep] > len(self.get_pending_striked_stage_codenames())
+            return ruleset.strikeOrder[self.currStep] > len(self.get_pending_striked_stages())
 
         if ruleset.best_of == 0:
             return True
 
         if ruleset.banCount == 0:
-            return ruleset.banByMaxGames[ruleset.best_of] > len(self.get_pending_striked_stage_codenames())
+            return ruleset.banByMaxGames[ruleset.best_of] > len(self.get_pending_striked_stages())
         else:
-            return ruleset.banCount > len(self.get_pending_striked_stage_codenames())
+            return ruleset.banCount > len(self.get_pending_striked_stages())
