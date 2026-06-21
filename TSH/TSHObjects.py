@@ -85,12 +85,12 @@ class Player():
         # The Name that is displayed in messages referring to this player
         self._display_name:str = display_name
         if discord_user:
-            self._display_name = discord_user.display_name
+            self._display_name = discord_user.global_name
     
     @property
     def display_name(self) -> str:
         if self._display_name == "" and self.discord_user:
-            return self.discord_user.display_name
+            return self.discord_user.global_name
         else:
             return self._display_name
     
@@ -122,10 +122,7 @@ class State():
         self.p1:Player = Player()
         self.p2:Player = Player()
 
-        self.players:dict[int, Player] = {
-            0 : self.p1,
-            1 : self.p2
-        }
+        self.players:list[Player] = [self.p1,self.p2]
 
         if tsh_data is not None:
             self.best_of = tsh_data['best_of']

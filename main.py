@@ -93,7 +93,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
-    embed:discord.Embed = discord.Embed(title="Stream Match",\
+    embed:discord.Embed = discord.Embed(title=f"Stream Match ({p1.global_name} vs {p2.global_name})",\
         description="Please strike stages at http://172.26.3.130:5000/stage-strike-app",\
             colour=discord.Colour.red())
     
@@ -152,6 +152,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
         
+        # Create state for game instance
         new_state:State = State(best_of)
         new_state.p1.discord_user = interaction.user
         new_state.p2.discord_user = opponent

@@ -96,8 +96,13 @@ class GameInstance():
         
         # TODO: Give buttons to report scores
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
+        report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(state=self.state)
         selected_stage_embed:SelectedStageEmbed = SelectedStageEmbed(self.ID, self.get_available_stages()[0], self.state)
-        await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file])
+        await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
+
+        await report_winner_view.wait()
+
+        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {self.state.players[report_winner_view.value].display_name}")
         return
 
         for game in range(1, self.state.best_of):
@@ -175,7 +180,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
 
     # Add player indicator
     player_embed:BaseEmbed = BaseEmbed(instance.ID)
-    player_embed.title = f"{state.get_current_player().discord_user.display_name} is banning"
+    player_embed.title = f"{state.get_current_player().display_name} is banning"
     player_embed.set_thumbnail(url=state.get_current_player().discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)
