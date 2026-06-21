@@ -1,10 +1,8 @@
-from TSH import TSHCommunicator
 from TSH.TSHObjects import Ruleset, State, Stage, Player
-
+from TSH import TSHCommunicator
 import discord
 from discord import File
 from random import randint
-from os import path
 import datetime
 import views
 
@@ -17,6 +15,7 @@ class GameInstance():
     def __init__(self, ID:int, thread:discord.Thread, state:State):
         self.ID:int = ID
         self.state:State = state
+        self.instinf = views.InstanceInfo(ID, state)
         self.thread = thread
         self.active = True
         self.current_message:discord.Message = None
@@ -48,7 +47,7 @@ class GameInstance():
         self.state.currGame = 0
 
         # Send RPS feedback
-        embed:discord.Embed = BaseEmbed(self.ID)
+        embed:discord.Embed = views.BaseEmbed(self.instinf)
         embed.title = "RPS Winner"
         embed.description = f"<@{self.state.get_current_player().discord_user.id}> Will strike first."
         embed.colour = discord.Colour.random()
@@ -96,13 +95,14 @@ class GameInstance():
         
         # TODO: Give buttons to report scores
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
-        report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(state=self.state)
-        selected_stage_embed:SelectedStageEmbed = SelectedStageEmbed(self.ID, self.get_available_stages()[0], self.state)
+        report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=self.get_available_stages()[0])
         await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
 
         await report_winner_view.wait()
 
-        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {self.state.players[report_winner_view.value].display_name}")
+        winner_id = int(report_winner_view.value)
+        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {self.state.players[winner_id].display_name}")
         return
 
         for game in range(1, self.state.best_of):
@@ -118,32 +118,6 @@ class GameInstance():
                     print(f"MATCH #{self.ID}: {self.state.players[player].display_name} Has won the set!")
                     return
 
-def stage_to_file(stage:Stage) -> File:
-    return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))
-
-class BaseEmbed(discord.Embed):
-    """
-    Creates an embed that has timestamp and game ID in the footer by default
-    """
-    def __init__(self, instID:int):
-        super().__init__(timestamp=datetime.datetime.now(datetime.UTC))
-        self.set_footer(text=f"#{instID}")
-
-class SelectedStageEmbed(BaseEmbed):
-    """
-    Creates an embed to display the selected stage of the current round
-    """
-    def __init__(self, instID:int, stage:Stage, state:State):
-        super().__init__(instID=instID)
-        self.stage:Stage = stage
-        self.state:State = state
-        self.file:File = stage_to_file(self.stage)
-
-        self.colour = discord.Colour.green()
-        self.set_image(url=self.file.uri)
-        self.title = f"Game {self.state.currGame+1}:"
-        self.description = f"{self.stage.display_name}"
-
 class FileEmbedContainer:
     def __init__(self):
         self.embeds:list[discord.Embed] = []
@@ -153,7 +127,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     def _create_embeds(stages:list[Stage], neutral:bool=True) -> FileEmbedContainer:
         r = FileEmbedContainer()
         for stage in stages:
-            file:File = stage_to_file(stage)
+            file:File = views.stage_to_file(stage)
             name:str = stage.display_name
             colour:discord.Colour = discord.Colour.light_grey()
             description:str
@@ -179,7 +153,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     result = FileEmbedContainer()
 
     # Add player indicator
-    player_embed:BaseEmbed = BaseEmbed(instance.ID)
+    player_embed:views.BaseEmbed = views.BaseEmbed(instance.instinf)
     player_embed.title = f"{state.get_current_player().display_name} is banning"
     player_embed.set_thumbnail(url=state.get_current_player().discord_user.display_avatar.url)
 

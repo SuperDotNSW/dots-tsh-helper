@@ -1,8 +1,18 @@
 import discord
-from discord import ui
+from discord import ui, File
 import config
 from TSH.TSHObjects import Stage, State, Player
+from TSH import TSHCommunicator
+import datetime
+from os import path
 
+# Code smell
+class InstanceInfo():
+    def __init__(self, ID:int, state:State):
+        self.ID:int = ID
+        self.state:State = state
+
+##### VIEWS #####
 class AcceptOrDenyDuelRequest(ui.View):
     def __init__(self, opponent=discord.User):
         super().__init__(timeout=config.get_match_request_timeout())
@@ -44,9 +54,10 @@ class StageBanningInput(ui.View):
         return interaction.user == self.target_user
 
 class ReportWinnerInput(ui.View):
-    def __init__(self, *, state:State):
+    def __init__(self, *, instance_info:InstanceInfo):
         super().__init__(timeout=None)
-        self.state:State = state
+        self.instance_info = instance_info
+        self.state:State = instance_info.state
         self.confirm_message:discord.Message = None
         self.value = None
         # TODO: Add interface to handle disputes
@@ -86,15 +97,27 @@ class ReportWinnerInput(ui.View):
         elif confirm_view.value == False:
             # Denied
             # Dont delete denied score reports, as it makes it easier to tell what's happening to a moderator/TO when handling disputes
-            # TODO: Create Embed to show disputed score
-            select.disabled = False
+            # TODO: Create embed to show disputed score
+            embed:discord.Embed = BaseEmbed(instance_info=self.instance_info)
+            embed.colour = discord.Colour.red()
+            embed.set_author(name=confirm_view.disputed_user.global_name, icon_url=confirm_view.disputed_user.display_avatar.url)
+            embed.title = f"Score Disputed"
+            embed.description = f"The reported winner was disputed."
+            embed.add_field(name="Reported Winner:", value=f"<@{self.state.players[self.value].discord_user.id}>")
+            embed.add_field(name="Reported by:", value=f"<@{interaction.user.id}>")
+            embed.add_field(name="\u200b", value="If an agreement cannot be reached, please contact a Tournament Organiser", inline=False)
+
+            await self.confirm_message.edit(embed=embed, view=None)
+
             self.value = None
+            select.disabled = False
             await original_msg.edit(view=self)
-            pass
         else:
             # Accepted
+            # TODO: Create embed to show player who won + stage the match took place on
             await self.confirm_message.delete()
-            pass
+            await original_msg.edit(view=None)
+            self.stop()
 
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
         return interaction.user == self.state.p1.discord_user or interaction.user == self.state.p2.discord_user
@@ -134,7 +157,6 @@ class ConfirmWinner(ui.View):
                 self.update_button_label()
                 await interaction.response.edit_message(view=self)
 
-
     @ui.button(
         label="Refute",
         style=discord.ButtonStyle.danger
@@ -150,3 +172,31 @@ class ConfirmWinner(ui.View):
             if user == interaction.user:
                 return True
         return False
+
+##### EMBEDS #####
+class BaseEmbed(discord.Embed):
+    """
+    Creates an embed that has timestamp and game ID in the footer by default
+    """
+    def __init__(self, instance_info:InstanceInfo):
+        super().__init__(timestamp=datetime.datetime.now(datetime.UTC))
+        self.set_footer(text=f"#{instance_info.ID}")
+        self.instance_info = instance_info
+        self.state = instance_info.state
+
+class SelectedStageEmbed(BaseEmbed):
+    """
+    Creates an embed to display the selected stage of the current round
+    """
+    def __init__(self, instance_info:InstanceInfo, stage:Stage):
+        super().__init__(instance_info=instance_info)
+        self.stage:Stage = stage
+        self.file:File = stage_to_file(stage)
+
+        self.colour = discord.Colour.green()
+        self.set_image(url=self.file.uri)
+        self.title = f"Game {self.state.currGame+1}:"
+        self.description = f"{self.stage.display_name}"
+
+def stage_to_file(stage:Stage) -> File:
+    return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))
