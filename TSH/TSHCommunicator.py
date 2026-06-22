@@ -1,5 +1,6 @@
 import requests
 from TSH.TSHObjects import Stage
+from colorama import Fore, Style
 
 class Share():
     base_dir:str = ""
@@ -9,7 +10,11 @@ BASE_URL:str = "http://localhost:5000"
 SHARE:Share = Share()
 
 def fetch_data() -> dict:
-    SHARE.current_data = requests.get(f"{BASE_URL}/ruleset").json()
+    try:
+        SHARE.current_data = requests.get(f"{BASE_URL}/ruleset").json()
+    except:
+        print(f"\n{Fore.RED}ERROR: Couldnt establish connection with TSH at {BASE_URL}, aborting...{Style.RESET_ALL}")
+        quit()
     SHARE.base_dir = SHARE.current_data['basedir']
     return SHARE.current_data
 

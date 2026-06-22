@@ -107,14 +107,11 @@ class State():
         self.canRedo:bool = False
         self.canUndo:bool = False
         self.currGame:int = 0
-        self.currPlayer:int = 0
         self.currStep:int = -1
         self.gentlemans:bool = False
         self.lastWinner:int = -1
         self.selectedStage:str = None
         self.stagesPicked:list = []
-        self.stagesWon:list[[list[Stage]]] = [[], []]
-        self.strikedBy:list[[list[Stage]]] = [[], []]
         self.strikedStages:list[[list[Stage]]] = [[]]
         assert best_of % 2 == 1
         self.best_of = best_of
@@ -123,6 +120,15 @@ class State():
         self.p2:Player = Player()
 
         self.players:list[Player] = [self.p1,self.p2]
+        self.currPlayer:Player = self.players[0]
+        self.stagesWon:dict[Player, [list[Stage]]] = {
+            self.p1 : [],
+            self.p2 : []
+        }
+        self.strikedBy:dict[Player, [list[Stage]]] = {
+            self.p1 : [],
+            self.p2 : []
+        }
 
         if tsh_data is not None:
             self.best_of = tsh_data['best_of']
@@ -133,18 +139,18 @@ class State():
         self.canRedo = d['canRedo']
         self.canUndo = d['canUndo']
         self.currGame = d['currGame']
-        if d['currPlayer'] == 0:
-            self.currPlayer = self.p1
-        else:
-            self.currPlayer = self.p2
+        self.currPlayer:Player = self.players[d['currPlayer']]
         self.currStep = d['currStep']
         self.gentlemans = d['gentlemans']
-        self.lastWinner = d['lastWinner']
-        self.selectedStage = d['selectedStage']
-        self.stagesPicked = d['stagesPicked']
-        self.stagesWon = d['stagesWon']
-        self.strikedBy = d['strikedBy']
-        self.strikedStages = d['strikedStages']
+        self.lastWinner = self.players[d['lastWinner']]
+        
+        # TODO: Convert stage codenames to Stage objects
+        # self.selectedStage = d['selectedStage']
+        # self.stagesPicked = d['stagesPicked']
+        # TODO: gulp
+        # self.stagesWon = d['stagesWon']
+        # self.strikedBy = d['strikedBy']
+        # self.strikedStages = d['strikedStages']
 
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
@@ -152,11 +158,14 @@ class State():
     @property
     def games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)
+    
+    def get_currplayer_index(self) -> int:
+        return self.players.index(self.currPlayer)
 
-    def get_games_won(self, player_id:int) -> int:
+    def get_games_won(self, player:Player) -> int:
         if len(self.stagesWon) == 0:
             return 0
-        return len(self.stagesWon[player_id])
+        return len(self.stagesWon[player])
 
     def get_all_striked_stages(self) -> list[Stage]:
         stages:list[Stage] = []
@@ -180,9 +189,6 @@ class State():
         if len(self.strikedStages) < self.currStep:
             return []
         return self.strikedStages[self.currStep]
-    
-    def get_current_player(self) -> Player:
-        return self.players[self.currPlayer]
     
     def can_strike(self, ruleset:Ruleset) -> bool:
         stages_to_strike:int = 0

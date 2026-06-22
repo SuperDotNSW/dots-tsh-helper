@@ -60,18 +60,18 @@ class ReportWinnerInput(ui.View):
         self.state:State = instance_info.state
         self.confirm_message:discord.Message = None
         self.value = None
-        # TODO: Add interface to handle disputes
 
         self.winner_select.min_values = 1
         self.winner_select.max_values = 1
-        # Value is a number so that i can test with matches against myself
+        # Value is a number so that i can test with matches against myself 
+        # (this makes the rest of the code harder to read and more annoying to write but whatever)
         self.winner_select.options = [discord.SelectOption(label=self.state.players[p].display_name, value=p, emoji="🏆") for p in range(len(self.state.players))]
     
     @ui.select(placeholder="Report Winner:")
     async def winner_select(self, interaction:discord.Interaction, select:ui.Select[ReportWinnerInput]):
         if self.confirm_message:
             return
-        self.value = select.values[0]
+        self.value = int(select.values[0])
         select.disabled = True
 
         # Disable selection
@@ -83,7 +83,7 @@ class ReportWinnerInput(ui.View):
         # Get player(s) who didn't make this report.
         confirm_view:ConfirmWinner = ConfirmWinner(target_users=[u.discord_user for u in self.state.players if u.discord_user != interaction.user])
         # TODO: Create embed displaying reported score
-        self.confirm_message = await interaction.followup.send(content="placeholder", view=confirm_view)
+        self.confirm_message = await interaction.followup.send(content=self.state.players[self.value].display_name, view=confirm_view)
 
         await confirm_view.wait()
 
@@ -94,10 +94,10 @@ class ReportWinnerInput(ui.View):
             select.disabled = False
             self.value = None
             await original_msg.edit(view=self)
+            await original_msg.reply(content="> Timed out: Please report a new winner.", delete_after=10.0)
         elif confirm_view.value == False:
             # Denied
             # Dont delete denied score reports, as it makes it easier to tell what's happening to a moderator/TO when handling disputes
-            # TODO: Create embed to show disputed score
             embed:discord.Embed = BaseEmbed(instance_info=self.instance_info)
             embed.colour = discord.Colour.red()
             embed.set_author(name=confirm_view.disputed_user.global_name, icon_url=confirm_view.disputed_user.display_avatar.url)
@@ -107,14 +107,16 @@ class ReportWinnerInput(ui.View):
             embed.add_field(name="Reported by:", value=f"<@{interaction.user.id}>")
             embed.add_field(name="\u200b", value="If an agreement cannot be reached, please contact a Tournament Organiser", inline=False)
 
-            await self.confirm_message.edit(embed=embed, view=None)
+            await self.confirm_message.edit(content=None, embed=embed, view=None)
+            self.confirm_message = None
 
             self.value = None
             select.disabled = False
             await original_msg.edit(view=self)
+            await original_msg.reply(content=f"<@{self.state.p1.discord_user.id}><@{self.state.p2.discord_user.id}>\n\
+                > Please report a new winner.", delete_after=10.0)
         else:
             # Accepted
-            # TODO: Create embed to show player who won + stage the match took place on
             await self.confirm_message.delete()
             await original_msg.edit(view=None)
             self.stop()

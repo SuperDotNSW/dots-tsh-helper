@@ -42,14 +42,14 @@ class GameInstance():
     # Instance gets terminated when this function ends
     async def run_match(self):
         # Do RPS for first ban
-        self.state.currPlayer = randint(0, 1)
+        self.state.currPlayer = self.state.players[randint(0, 1)]
         self.state.currStep = 0
         self.state.currGame = 0
 
         # Send RPS feedback
         embed:discord.Embed = views.BaseEmbed(self.instinf)
         embed.title = "RPS Winner"
-        embed.description = f"<@{self.state.get_current_player().discord_user.id}> Will strike first."
+        embed.description = f"<@{self.state.currPlayer.discord_user.id}> Will strike first."
         embed.colour = discord.Colour.random()
         await self.thread.send(embed=embed)
 
@@ -64,7 +64,7 @@ class GameInstance():
             view:views.StageBanningInput = views.StageBanningInput(
                 ban_count=current_ruleset.strikeOrder[self.state.currStep],
                 available_stages=available_stages,
-                target_user=self.state.get_current_player().discord_user
+                target_user=self.state.currPlayer.discord_user
             )
             
             # Send messsage
@@ -90,10 +90,9 @@ class GameInstance():
                 
                 # Increment step
                 self.state.currStep += 1
-                self.state.currPlayer = (self.state.currPlayer + 1) % 2
+                self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
                 self.state.strikedStages.append([])
         
-        # TODO: Give buttons to report scores
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
         report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
         selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=self.get_available_stages()[0])
@@ -101,8 +100,13 @@ class GameInstance():
 
         await report_winner_view.wait()
 
-        winner_id = int(report_winner_view.value)
-        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {self.state.players[winner_id].display_name}")
+        # TODO: Display winner of round in message, then send a new message for the next banning phase
+        # TODO: Create embed to show player who won + stage the match took place on
+        winner = self.state.players[report_winner_view.value]
+        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {winner.display_name}")
+        selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
+        selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
+        await self.current_message.edit(embed=selected_stage_embed)
         return
 
         for game in range(1, self.state.best_of):
@@ -154,8 +158,8 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
 
     # Add player indicator
     player_embed:views.BaseEmbed = views.BaseEmbed(instance.instinf)
-    player_embed.title = f"{state.get_current_player().display_name} is banning"
-    player_embed.set_thumbnail(url=state.get_current_player().discord_user.display_avatar.url)
+    player_embed.title = f"{state.currPlayer.display_name} is banning"
+    player_embed.set_thumbnail(url=state.currPlayer.discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)
 
