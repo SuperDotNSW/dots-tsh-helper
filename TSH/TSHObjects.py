@@ -57,8 +57,6 @@ class Ruleset():
         self.useMDSR = d['useMDSR']
         self.videogame = d['videogame']
 
-        self.neutralStages:list[Stage]
-        self.counterpickStages:list[Stage]
         self.neutralStages.clear()
         self.counterpickStages.clear()
         for stagedata in d['neutralStages']:
@@ -109,7 +107,7 @@ class State():
         self.currGame:int = 0
         self.currStep:int = -1
         self.gentlemans:bool = False
-        self.lastWinner:int = -1
+        self.lastWinner:Player = None
         self.selectedStage:str = None
         self.stagesPicked:list = []
         self.strikedStages:list[[list[Stage]]] = [[]]
@@ -119,7 +117,10 @@ class State():
         self.p1:Player = Player()
         self.p2:Player = Player()
 
-        self.players:list[Player] = [self.p1,self.p2]
+        self.players:list[Player] = [
+            self.p1,
+            self.p2
+        ]
         self.currPlayer:Player = self.players[0]
         self.stagesWon:dict[Player, [list[Stage]]] = {
             self.p1 : [],
@@ -155,8 +156,7 @@ class State():
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
     
-    @property
-    def games_to_win(self) -> int:
+    def get_games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)
     
     def get_currplayer_index(self) -> int:
@@ -204,3 +204,21 @@ class State():
             return ruleset.banByMaxGames[ruleset.best_of] > len(self.get_pending_striked_stages())
         else:
             return ruleset.banCount > len(self.get_pending_striked_stages())
+    
+    def get_dsr_stages(self, use_mdsr=bool) -> list[Stage]:
+        result:list[Stage] = []
+        if use_mdsr:
+            for s in self.stagesWon[self.currPlayer]:
+                result.append(s)
+        else:
+            for p in self.stagesWon:
+                for s in self.stagesWon[p]:
+                    result.append(s)
+        return result
+    
+    def reset_strikes(self):
+        for p in self.strikedBy:
+            self.strikedBy[p] = []
+        for step in self.strikedStages:
+            self.strikedStages[step] = []
+

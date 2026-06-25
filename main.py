@@ -169,21 +169,22 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         # Remove user from active_requests list
         outgoing_requests.remove(interaction.user)
 
-        # Opponent has accepted the duel request, begin initalizing the match
-        message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
-        thread:discord.Thread = await message.create_thread(name="Match: "+interaction.user.display_name+" vs "+opponent.display_name, \
-            auto_archive_duration=4320, reason="Tournament Match")
-        
-        await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
-        await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
-        
         # Create state for game instance
         new_state:State = State(best_of)
         new_state.p1.discord_user = interaction.user
         new_state.p2.discord_user = opponent
         # Create game instance and add it to active_instances[].
         instance_id:int = get_unique_instance_id()
+        # Opponent has accepted the duel request, begin initalizing the match
+        message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
+        thread:discord.Thread = await message.create_thread(name=f"Match #{instance_id}: {interaction.user.display_name} vs {opponent.display_name}", \
+            auto_archive_duration=1440, reason="Tournament Match")
         active_instances[instance_id] = GameInstance(instance_id, thread=thread, state=new_state)
+
+        
+        await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
+        await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
+        
         # Run match
         await active_instances[instance_id].run_match()
         # Delete match after ending

@@ -200,5 +200,17 @@ class SelectedStageEmbed(BaseEmbed):
         self.title = f"Game {self.state.currGame+1}:"
         self.description = f"{self.stage.display_name}"
 
+class GameCountEmbed(BaseEmbed):
+    """
+    Creates an embed that displays the game count and best of
+    """
+    def __init__(self, instance_info:InstanceInfo, state:State):
+        super().__init__(instance_info=instance_info)
+        self.title = f"Game {state.currGame+1}/{state.best_of}"
+        self.description = f"# {state.get_games_won(state.p1)} - {state.get_games_won(state.p2)}"
+        self.add_field(name=f"Best of: {state.best_of}", value=f"{state.p1.discord_user.mention} vs {state.p2.discord_user.mention}")
+        if state.get_games_won(state.p1) >= state.get_games_to_win() or state.get_games_won(state.p2) >= state.get_games_to_win():
+            self.colour = discord.Colour.gold()
+
 def stage_to_file(stage:Stage) -> File:
     return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))

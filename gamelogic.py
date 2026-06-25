@@ -31,14 +31,30 @@ class GameInstance():
         await self.current_message.reply(embed=embed)
     
     def get_available_stages(self) -> list[Stage]:
-        # TODO: Account for DSR/MDSR
-
         # Eliminate stages that have already been banned
         all_striked_stages = self.state.get_all_striked_stages()
         result:list[Stage] = [stage for stage in current_ruleset.neutralStages if not (stage in all_striked_stages)]
+        if self.state.currGame > 0:
+            dsr_stages = self.state.get_dsr_stages(current_ruleset.useMDSR)
+            # Add counterpick stages
+            result.append([stage for stage in current_ruleset.counterpickStages if not (stage in all_striked_stages)])
+            # Remove stages that have been DSR'd
+            result = [stage for stage in result if not (stage in dsr_stages)]
 
         return result
     
+    def create_banning_input(self, ban_count:int) -> views.StageBanningInput:
+        # Create stage select ui
+        
+        # Find remaining pool of stages
+        available_stages = self.get_available_stages()
+        # Create banning input
+        return views.StageBanningInput(
+            ban_count=ban_count,
+            available_stages=available_stages,
+            target_user=self.state.currPlayer.discord_user
+        )
+
     # Instance gets terminated when this function ends
     async def run_match(self):
         # Do RPS for first ban
@@ -55,23 +71,14 @@ class GameInstance():
 
         # Take turns banning based on strikeOrder
         for step in range(len(current_ruleset.strikeOrder)):
-            # Create stage select ui
-            stage_ui:FileEmbedContainer = create_stage_embeds(self, self.state)
-            # Find remaining pool of stages
-            available_stages = self.get_available_stages()
-            # Create banning input
-            # Only starter stages for first round, uses strikeOrder
-            view:views.StageBanningInput = views.StageBanningInput(
-                ban_count=current_ruleset.strikeOrder[self.state.currStep],
-                available_stages=available_stages,
-                target_user=self.state.currPlayer.discord_user
-            )
+            stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
+            view:views.StageBanningInput = self.create_banning_input(current_ruleset.strikeOrder[self.state.currStep])
             
             # Send messsage
             if self.current_message:
-                await self.current_message.edit(embeds=stage_ui.embeds, view=view)
+                await self.current_message.edit(embeds=stage_embeds.embeds, view=view)
             else:
-                self.current_message = await self.thread.send(embeds=stage_ui.embeds, files=stage_ui.files, view=view)
+                self.current_message = await self.thread.send(embeds=stage_embeds.embeds, files=stage_embeds.files, view=view)
             
             # Wait for input
             await view.wait()
@@ -93,34 +100,81 @@ class GameInstance():
                 self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
                 self.state.strikedStages.append([])
         
-        print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {self.get_available_stages()[0].display_name}")
+        # One remaining available stage, stage has been chosen
+        chosen_stage:Stage = self.get_available_stages()[0]
+
+        print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {chosen_stage.display_name}")
+        # Display selected stage in original message and add winner report view
         report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
-        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=self.get_available_stages()[0])
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
         await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
 
         await report_winner_view.wait()
 
-        # TODO: Display winner of round in message, then send a new message for the next banning phase
-        # TODO: Create embed to show player who won + stage the match took place on
         winner = self.state.players[report_winner_view.value]
         print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {winner.display_name}")
+
+        # Update State
+        self.state.lastWinner = winner
+        self.state.stagesWon[winner].append(chosen_stage)
+        self.state.stagesPicked.append(chosen_stage)
+        
+        # Update Embed
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
         await self.current_message.edit(embed=selected_stage_embed)
-        return
+
+        self.current_message = None
 
         for game in range(1, self.state.best_of):
-            # TODO: Loop through rounds until winner
-            print(f"MATCH #{self.ID}: GAME {game+1} START")
-            self.state.currGame = game
-
             # Check for winner
             for player_id in range(len(self.state.players)):
-                if self.state.get_games_won(player_id) >= self.state.games_to_win:
+                if self.state.get_games_won(player_id) >= self.state.get_games_to_win():
                     # Player has won
                     # TODO: Display all stages played on and final scores
                     print(f"MATCH #{self.ID}: {self.state.players[player].display_name} Has won the set!")
                     return
+            
+            # TODO: Loop through rounds until winner
+            print(f"MATCH #{self.ID}: GAME {game+1} START")
+            # Announce current standings
+            await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
+            # Update current game
+            self.state.currGame = game
+
+            ### Do winner bans (UNTESTED) ###
+            self.state.currPlayer = self.state.lastWinner
+
+            # Reset striked stages
+            self.state.reset_strikes()
+
+            # Update stage_embeds
+            stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
+            # Create banning view
+            view = self.create_banning_input(current_ruleset.banCount)
+
+            self.current_message = await self.thread.send(embeds=stage_embeds.embeds, files=stage_embeds.files, view=view)
+
+            await view.wait()
+
+            if view.values is None:
+                # Something went wrong (timeout most likely)
+                await _send_error_message()
+                return
+            else:
+                # Ban Stage(s)
+                print(f"MATCH #{self.ID}: {view.target_user.display_name} requested ban: {view.values}")
+                for codename in view.values:
+                    stage:Stage = current_ruleset.find_stage_by_codename(codename)
+                    self.state.strikedStages[self.state.currStep].append(stage)
+                    self.state.strikedBy[self.state.currPlayer].append(stage)
+                
+                # Increment step
+                self.state.currStep += 1
+                self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
+            ### TODO: Do opponent counterpick ###
+
+            ### Repeat ###
 
 class FileEmbedContainer:
     def __init__(self):
@@ -139,14 +193,21 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
                 description = "Neutral Stage"
             else:
                 description = "Counterpick Stage"
-
+            
+            # Pending striked stages, should be irrelevant for this bot but just to be thorough
             for s in state.get_pending_striked_stages():
                 if s == stage:
                     colour = discord.Colour.dark_red()
+            # Striked by player
             for s in state.get_confirmed_striked_stages():
                 if s == stage:
                     name = f"~~{name}~~ (Banned)"
                     colour = discord.Colour.red()
+            # DSR
+            if (current_ruleset.useDSR or current_ruleset.useMDSR):
+                if stage in state.get_dsr_stages(current_ruleset.useMDSR):
+                    name = f"~~{name}~~ (DSR)"
+                    colour = discord.Colour.dark_red()
 
             embed:discord.Embed = discord.Embed(colour=colour, title=name, description=description)
             embed.set_thumbnail(url=file.uri)
@@ -164,12 +225,12 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     result.embeds.append(player_embed)
 
     if state.currGame == 0:
-        # Game 1
+        # Neutral Stages only
         container:FileEmbedContainer = _create_embeds(current_ruleset.neutralStages, True)
         result.embeds += container.embeds
         result.files += container.files
     else:
-        # Beyond
+        # All Stages
         container:FileEmbedContainer = _create_embeds(current_ruleset.neutralStages, True)
         result.embeds += container.embeds
         result.files += container.files
