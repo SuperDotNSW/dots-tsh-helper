@@ -219,6 +219,6 @@ class State():
     def reset_strikes(self):
         for p in self.strikedBy:
             self.strikedBy[p] = []
-        for step in self.strikedStages:
+        for step in range(len(self.strikedStages)):
             self.strikedStages[step] = []
 

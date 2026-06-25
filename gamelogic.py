@@ -37,17 +37,18 @@ class GameInstance():
         if self.state.currGame > 0:
             dsr_stages = self.state.get_dsr_stages(current_ruleset.useMDSR)
             # Add counterpick stages
-            result.append([stage for stage in current_ruleset.counterpickStages if not (stage in all_striked_stages)])
+            for stage in [stage for stage in current_ruleset.counterpickStages if not (stage in all_striked_stages)]:
+                result.append(stage)
             # Remove stages that have been DSR'd
             result = [stage for stage in result if not (stage in dsr_stages)]
-
+        
         return result
     
     def create_banning_input(self, ban_count:int) -> views.StageBanningInput:
         # Create stage select ui
         
         # Find remaining pool of stages
-        available_stages = self.get_available_stages()
+        available_stages:list[Stage] = self.get_available_stages()
         # Create banning input
         return views.StageBanningInput(
             ban_count=ban_count,
@@ -73,6 +74,9 @@ class GameInstance():
         for step in range(len(current_ruleset.strikeOrder)):
             stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
             view:views.StageBanningInput = self.create_banning_input(current_ruleset.strikeOrder[self.state.currStep])
+
+            # TODO: Seperate currently banning embed into a seperate message
+            # TODO: Split stage embeds into batches of 10 that can be referenced in a list
             
             # Send messsage
             if self.current_message:
@@ -128,8 +132,8 @@ class GameInstance():
 
         for game in range(1, self.state.best_of):
             # Check for winner
-            for player_id in range(len(self.state.players)):
-                if self.state.get_games_won(player_id) >= self.state.get_games_to_win():
+            for player in (self.state.players):
+                if self.state.get_games_won(player) >= self.state.get_games_to_win():
                     # Player has won
                     # TODO: Display all stages played on and final scores
                     print(f"MATCH #{self.ID}: {self.state.players[player].display_name} Has won the set!")
@@ -238,4 +242,5 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
         result.embeds += container.embeds
         result.files += container.files
 
+    print(f"{len(result.embeds)}, {result.embeds}")
     return result

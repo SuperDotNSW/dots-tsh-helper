@@ -59,6 +59,7 @@ class ReportWinnerInput(ui.View):
         self.instance_info = instance_info
         self.state:State = instance_info.state
         self.confirm_message:discord.Message = None
+        self.thinking = False
         self.value = None
 
         self.winner_select.min_values = 1
@@ -69,8 +70,9 @@ class ReportWinnerInput(ui.View):
     
     @ui.select(placeholder="Report Winner:")
     async def winner_select(self, interaction:discord.Interaction, select:ui.Select[ReportWinnerInput]):
-        if self.confirm_message:
+        if self.thinking:
             return
+        self.thinking = True
         self.value = int(select.values[0])
         select.disabled = True
 
@@ -120,8 +122,11 @@ class ReportWinnerInput(ui.View):
             await self.confirm_message.delete()
             await original_msg.edit(view=None)
             self.stop()
+        self.thinking = False
 
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
+        if self.thinking:
+            return False
         return interaction.user == self.state.p1.discord_user or interaction.user == self.state.p2.discord_user
 
 
