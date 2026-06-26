@@ -14,9 +14,10 @@ class InstanceInfo():
 
 ##### VIEWS #####
 class AcceptOrDenyDuelRequest(ui.View):
-    def __init__(self, opponent=discord.User):
+    def __init__(self, target_user:discord.User, opponent=discord.User):
         super().__init__(timeout=config.get_match_request_timeout())
         self.opponent = opponent
+        self.target_user = target_user
         self.value = None
     
     @ui.button(label="Accept", style=discord.ButtonStyle.green)
@@ -28,30 +29,47 @@ class AcceptOrDenyDuelRequest(ui.View):
         self.value = True
         self.stop()
     
+    @ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, interaction:discord.Interaction, button:ui.button[AcceptOrDenyDuelRequest]):
+        # Acks the request and returns False
+        self.value = False
+        self.stop()
+    
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
-        return interaction.user == self.opponent
+        return interaction.user == self.opponent or interaction.user == self.target_user
 
-class StageBanningInput(ui.View):
-    def __init__(self, *, ban_count:int, available_stages:list[Stage], target_user:discord.User):
+class StageInputBase(ui.View):
+    def __init__(self, *, placeholder:str="UNSET", emoji:str="", available_stages:list[Stage], target_user:discord.User):
         super().__init__(timeout=None)
         self.values:list[str] = []
-        self.ban_count:int = ban_count
         self.target_user:discord.User = target_user
 
         # Define select menu
-        self.ban_selector.min_values = ban_count
-        self.ban_selector.max_values = ban_count
-        self.ban_selector.options = [discord.SelectOption(label=stage.display_name, value=stage.codename, emoji="❌") for stage in available_stages]
-        self.ban_selector.placeholder = f"({self.target_user.display_name}) Select Bans:"
+        self.selector.min_values = 1
+        self.selector.max_values = 1
+        self.selector.options = [discord.SelectOption(label=stage.display_name, value=stage.codename, emoji=emoji) for stage in available_stages]
+        self.selector.placeholder = f"({self.target_user.display_name}) {placeholder}:"
     
     @ui.select()
-    async def ban_selector(self, interaction:discord.Interaction, select:ui.Select[StageBanningInput]):
+    async def selector(self, interaction:discord.Interaction, select:ui.Select[StageBanningInput]):
         self.values = select.values
         await interaction.response.edit_message(view=None)
         self.stop()
-
+    
     async def interaction_check(self, interaction:discord.Interaction) -> bool:
         return interaction.user == self.target_user
+
+class StageBanningInput(StageInputBase):
+    def __init__(self, ban_count:int, available_stages:list[Stage], target_user:discord.User):
+        super().__init__(placeholder="Ban Stages", available_stages=available_stages, target_user=target_user, emoji="❌")
+        self.selector.min_values = ban_count
+        self.selector.max_values = ban_count
+
+class StageSelectInput(StageInputBase):
+    def __init__(self, available_stages:list[Stage], target_user:discord.User):
+        super().__init__(placeholder="Select Stage", available_stages=available_stages, target_user=target_user, emoji="➡️")
+        self.selector.min_values = 1
+        self.selector.max_values = 1
 
 class ReportWinnerInput(ui.View):
     def __init__(self, *, instance_info:InstanceInfo):
@@ -213,9 +231,12 @@ class GameCountEmbed(BaseEmbed):
         super().__init__(instance_info=instance_info)
         self.title = f"Game {state.currGame+1}/{state.best_of}"
         self.description = f"# {state.get_games_won(state.p1)} - {state.get_games_won(state.p2)}"
-        self.add_field(name=f"Best of: {state.best_of}", value=f"{state.p1.discord_user.mention} vs {state.p2.discord_user.mention}")
-        if state.get_games_won(state.p1) >= state.get_games_to_win() or state.get_games_won(state.p2) >= state.get_games_to_win():
-            self.colour = discord.Colour.gold()
-
+        self.add_field(name=f"Best of: {state.best_of}", value=f"-# {state.p1.discord_user.mention} vs {state.p2.discord_user.mention}")
+        for player in state.players:
+            if state.get_games_won(player) >= state.get_games_to_win():
+                self.colour = discord.Colour.gold()
+                self.set_thumbnail(url=player.discord_user.avatar.url)
+                self.description = self.description + f"\n### Winner: {player.discord_user.mention}"
+                
 def stage_to_file(stage:Stage) -> File:
     return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))

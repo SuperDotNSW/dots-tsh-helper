@@ -149,7 +149,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         description=f"<@{interaction.user.id}> has requested for a best of {best_of} match with you.\n(Expires in {config.get_match_request_timeout()}s)",\
             timestamp=datetime.datetime.now(datetime.UTC))
     # Create view and pass requested opponent
-    view = AcceptOrDenyDuelRequest(opponent)
+    view = AcceptOrDenyDuelRequest(interaction.user, opponent)
     # Send message
     await interaction.response.send_message(content=f"<@{opponent.id}>", embed=embed, view=view)
     # Wait for view to timeout or close
@@ -192,6 +192,10 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         print(f"Killed match instance #{instance_id}")
 
         await interaction.edit_original_response(content="Match has concluded.")
+    elif view.value == False:
+        # Remove user from active_requests list
+        outgoing_requests.remove(interaction.user)
+        await interaction.delete_original_response()
     
     try:
         # Remove user from active_requests list (just in case something went crazy wrong)
