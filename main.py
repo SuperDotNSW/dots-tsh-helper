@@ -145,7 +145,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
     outgoing_requests.append(interaction.user)
 
     # Create embed details
-    embed:discord.Embed = discord.Embed(title="Duel Request", colour=discord.Colour.gold(), \
+    embed:discord.Embed = discord.Embed(title="Match Request", colour=discord.Colour.gold(), \
         description=f"<@{interaction.user.id}> has requested for a best of {best_of} match with you.\n(Expires in {config.get_match_request_timeout()}s)",\
             timestamp=datetime.datetime.now(datetime.UTC))
     # Create view and pass requested opponent
@@ -159,11 +159,12 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         # Remove user from active_requests list
         outgoing_requests.remove(interaction.user)
 
-        embed.title = "Duel Request (Timed Out)"
+        embed.title = embed.title+" (Timed Out)"
         embed.description = "~~"+embed.description+"~~"
         await interaction.edit_original_response(embed=embed, view=None)
-        await asyncio.sleep(10.0)
-        await interaction.delete_original_response()
+        if config.get_delete_expired_requests():
+            await asyncio.sleep(10.0)
+            await interaction.delete_original_response()
     elif view.value == True:
         # Request was accepted
         # Remove user from active_requests list
