@@ -18,7 +18,7 @@ class GameInstance():
         self.instinf = views.InstanceInfo(ID, state)
         self.thread = thread
         self.active = True
-        self.current_message:discord.Message = None
+        self.banning_msgs:list[discord.Message] = []
     
     async def _send_error_message(self):
         embed = discord.Embed(
@@ -28,7 +28,7 @@ class GameInstance():
             description="An unknown error has occured and the match has been terminated."
         )
         embed.set_footer(f"#{self.ID}")
-        await self.current_message.reply(embed=embed)
+        await self.banning_msgs[0].reply(embed=embed)
     
     def get_available_stages(self) -> list[Stage]:
         # Eliminate stages that have already been banned
@@ -44,6 +44,7 @@ class GameInstance():
         
         return result
     
+    # Creates a view that allows the user to input their bans in a dropdown
     def create_banning_input(self, ban_count:int) -> views.StageBanningInput:
         # Create stage select ui
         
@@ -55,6 +56,75 @@ class GameInstance():
             available_stages=available_stages,
             target_user=self.state.currPlayer.discord_user
         )
+    
+    # Creates stage banning input message, waits for user input, then returns the view after recieving bans
+    async def create_stage_banning_msg(self) -> views.StageBanningInput:
+        # TODO: TEST THIS FUNCTION!!!
+
+        stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
+        view:views.StageBanningInput
+        if self.state.currGame == 0:
+            view = self.create_banning_input(current_ruleset.strikeOrder[self.state.currStep])
+        else:
+            view = self.create_banning_input(current_ruleset.banCount)
+
+        embed_batches:list[[discord.Embed]] = []
+        file_batches:list[[File]] = []
+        for i in range(0, len(stage_embeds), 10):
+            # Gets the next 10 embeds in stage_embeds and packs them into a list
+            # which then gets appended to embed_batches and file_batches
+            embed_batches.append([stage_embeds.embeds[emb] for emb in range(i, i + min(len(stage_embeds - i), 10))])
+            file_batches.append([stage_embeds.files[emb] for emb in range(i, i + min(len(stage_embeds - i), 10))])
+        
+        if len(self.banning_msgs) == 0:
+            # Send new messages if banning_msgs is empty
+            for i in range(len(embed_batches)):
+                embeds:list[discord.Embed] = embed_batches[i]
+                files:list[File] = file_batches[i]
+                
+                if i + 1 == len(embed_batches):
+                    # Add view to message if this is the last batch
+                    self.banning_msgs.append(await self.thread.send(embeds=embeds, files=files, view=view))
+                else:
+                    self.banning_msgs.append(await self.thread.send(embeds=embeds, files=files))
+        else:
+            # Edits existing messages if banning_msgs has existing elements
+            for i in range(len(embed_batches)):
+                embeds:list[discord.Embed] = embed_batches[i]
+
+                # Dont need to add files as they should already be in the messsages
+                if i + 1 == len(embed_batches):
+                    # Add view to message if this is the last batch
+                    await self.banning_msgs[i].edit(embeds=embeds, view=view)
+                else:
+                    await self.banning_msgs[i].edit(embeds=embeds)
+        
+        # Wait for bans
+        await view.wait()
+
+        # Return view
+        return view
+    
+    # Creates a message that allows users to report the winner of the match, awaits the input, then returns the resulting player
+    async def create_report_winner_view(self, chosen_stage:Stage) -> Player:
+        # TODO: TEST THIS FUNCTION!!!
+
+        # Display selected stage in original message and add winner report view
+        report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
+        for i in range(len(self.banning_msgs)):
+            if i == 0:
+                # Replace first message in list with winner report
+                await self.banning_msgs[i].edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
+            else:
+                # Delete all subsequent messages
+                await self.banning_msgs[i].delete()
+        
+        # Wait for players to decide on winner
+        await report_winner_view.wait()
+
+        # Return resulting winner
+        return self.state.players[report_winner_view.value]
 
     # Instance gets terminated when this function ends
     async def run_match(self):
@@ -72,29 +142,20 @@ class GameInstance():
 
         # Take turns banning based on strikeOrder
         for step in range(len(current_ruleset.strikeOrder)):
-            stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
-            view:views.StageBanningInput = self.create_banning_input(current_ruleset.strikeOrder[self.state.currStep])
-
             # TODO: Seperate currently banning embed into a seperate message
             # TODO: Split stage embeds into batches of 10 that can be referenced in a list
             
-            # Send messsage
-            if self.current_message:
-                await self.current_message.edit(embeds=stage_embeds.embeds, view=view)
-            else:
-                self.current_message = await self.thread.send(embeds=stage_embeds.embeds, files=stage_embeds.files, view=view)
-            
-            # Wait for input
-            await view.wait()
+            # Send messsage and wait for input
+            bans_view = await self.create_stage_banning_msg()
 
-            if view.values is None:
+            if bans_view.values is None:
                 # Something went wrong (timeout most likely)
                 await _send_error_message()
                 return
             else:
                 # Ban Stage(s)
-                print(f"MATCH #{self.ID}: {view.target_user.display_name} requested ban: {view.values}")
-                for codename in view.values:
+                print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
+                for codename in bans_view.values:
                     stage:Stage = current_ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
@@ -108,14 +169,9 @@ class GameInstance():
         chosen_stage:Stage = self.get_available_stages()[0]
 
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {chosen_stage.display_name}")
-        # Display selected stage in original message and add winner report view
-        report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
-        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
-        await self.current_message.edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
 
-        await report_winner_view.wait()
+        winner = await self.create_report_winner_view(chosen_stage)
 
-        winner = self.state.players[report_winner_view.value]
         print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {winner.display_name}")
 
         # Update State
@@ -126,9 +182,9 @@ class GameInstance():
         # Update Embed
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
-        await self.current_message.edit(embed=selected_stage_embed)
+        await self.banning_msgs[0].edit(embed=selected_stage_embed)
 
-        self.current_message = None
+        self.banning_msgs = []
 
         for game in range(1, self.state.best_of):
             # Check for winner
@@ -152,23 +208,17 @@ class GameInstance():
             # Reset striked stages
             self.state.reset_strikes()
 
-            # Update stage_embeds
-            stage_embeds:FileEmbedContainer = create_stage_embeds(self, self.state)
             # Create banning view
-            view = self.create_banning_input(current_ruleset.banCount)
+            bans_view = await self.create_stage_banning_msg()
 
-            self.current_message = await self.thread.send(embeds=stage_embeds.embeds, files=stage_embeds.files, view=view)
-
-            await view.wait()
-
-            if view.values is None:
+            if bans_view.values is None:
                 # Something went wrong (timeout most likely)
                 await _send_error_message()
                 return
             else:
                 # Ban Stage(s)
-                print(f"MATCH #{self.ID}: {view.target_user.display_name} requested ban: {view.values}")
-                for codename in view.values:
+                print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
+                for codename in bans_view.values:
                     stage:Stage = current_ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
@@ -177,8 +227,12 @@ class GameInstance():
                 self.state.currStep += 1
                 self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
             ### TODO: Do opponent counterpick ###
+            
+            ### TODO: Report winner ###
 
+            self.banning_msgs = []
             ### Repeat ###
+            self._send_error_message()
 
 class FileEmbedContainer:
     def __init__(self):
