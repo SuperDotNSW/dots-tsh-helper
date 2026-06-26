@@ -3,3 +3,5 @@ My first attempt at making a discord bot! This repository attempts to integrate 
 
 TODO:
 - Allow for multiple stage pools that players can vote on when starting their set
+- Support 'banByMaxGames' in TSH
+- Create GameInstance that can interface directly with the current TSH stream match
