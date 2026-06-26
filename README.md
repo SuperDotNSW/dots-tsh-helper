@@ -5,3 +5,8 @@ TODO:
 - Allow for multiple stage pools that players can vote on when starting their set
 - Support 'banByMaxGames' in TSH
 - Create GameInstance that can interface directly with the current TSH stream match
+
+## Dependencies:
+- colorama           0.4.6    (Coloured messages in terminal)
+- discord.py         2.7.1    (Discord API)
+- requests           2.34.2   (Communicates with webapps)
