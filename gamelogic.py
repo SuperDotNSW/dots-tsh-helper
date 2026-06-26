@@ -19,6 +19,8 @@ class GameInstance():
         self.thread = thread
         self.active = True
         self.banning_msgs:list[discord.Message] = []
+        # Update TSH Ruleset before beginning
+        current_ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
     
     async def _send_error_message(self):
         embed = discord.Embed(
