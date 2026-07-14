@@ -201,7 +201,7 @@ class GameInstance():
             # End Match~!
             return
 
-        for game in range(1, self.state.best_of):
+        for game in range(1, self.state.best_of+1):
             # Announce current standings
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
 
@@ -244,7 +244,6 @@ class GameInstance():
                 self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
             
             ### Do opponent counterpick ###
-            self.state.currPlayer = self.state.lastWinner
             counterpick_view = await self.send_stage_msg(is_picking=True)
             chosen_stage:Stage = None
 
