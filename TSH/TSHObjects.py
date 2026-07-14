@@ -207,8 +207,14 @@ class State():
     
     def get_dsr_stages(self, use_mdsr=bool) -> list[Stage]:
         result:list[Stage] = []
+        player_to_check:Player = None
+        if self.currPlayer == self.lastWinner:
+            self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
+        else:
+            player_to_check = self.lastWinner
+
         if use_mdsr:
-            for s in self.stagesWon[self.currPlayer]:
+            for s in self.stagesWon[player_to_check]:
                 result.append(s)
         else:
             for p in self.stagesWon:
