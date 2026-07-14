@@ -10,3 +10,4 @@ TODO:
 - colorama           0.4.6    (Coloured messages in terminal)
 - discord.py         2.7.1    (Discord API)
 - requests           2.34.2   (Communicates with webapps)
+- python-dotenv      1.2.2    (Used to store bot token privately)

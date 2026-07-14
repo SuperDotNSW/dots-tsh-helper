@@ -61,7 +61,7 @@ class StageInputBase(ui.View):
 
 class StageBanningInput(StageInputBase):
     def __init__(self, ban_count:int, available_stages:list[Stage], target_user:discord.User):
-        super().__init__(placeholder="Ban Stages", available_stages=available_stages, target_user=target_user, emoji="❌")
+        super().__init__(placeholder=f"Ban {ban_count} Stage(s)", available_stages=available_stages, target_user=target_user, emoji="❌")
         self.selector.min_values = ban_count
         self.selector.max_values = ban_count
 
