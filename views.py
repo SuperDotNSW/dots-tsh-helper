@@ -111,8 +111,8 @@ class ReportWinnerInput(ui.View):
         confirm_embed.colour = discord.Colour.dark_green()
         confirm_embed.title = "Reported Winner:"
         confirm_embed.description = f"{interaction.user.mention} reported {reported_winner.discord_user.mention} won."
-        confirm_embed.thumbnail.url = reported_winner.discord_user.avatar.url
-        
+        confirm_embed.set_thumbnail(url=reported_winner.discord_user.avatar.url)
+
         self.confirm_message = await interaction.followup.send(embed=confirm_embed, view=confirm_view)
 
         await confirm_view.wait()
