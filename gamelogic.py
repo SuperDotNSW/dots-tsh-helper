@@ -311,8 +311,8 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
                     name = f"~~{name}~~ (Banned)"
                     colour = discord.Colour.red()
             # DSR
-            if (self.ruleset.useDSR or self.ruleset.useMDSR):
-                if stage in state.get_dsr_stages(self.ruleset.useMDSR):
+            if (instance.ruleset.useDSR or instance.ruleset.useMDSR):
+                if stage in state.get_dsr_stages(instance.ruleset.useMDSR):
                     name = f"~~{name}~~ (DSR)"
                     colour = discord.Colour.dark_red()
 
