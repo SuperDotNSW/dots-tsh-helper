@@ -154,6 +154,22 @@ class GameInstance():
 
     # Instance gets terminated when this function ends
     async def run_match(self):
+        # Do player setup
+
+        # I think this will garbage collect the variables when it leaves this scope??
+        if True:
+            view = views.ConfirmHostView([player.discord_user for player in self.state.players])
+            await self.thread.send(
+                embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
+                view=view
+            )
+
+            await view.wait()
+
+            if view.value != True:
+                self._send_error_message()
+                return
+
         # Do RPS for first ban
         self.state.currPlayer = self.state.players[randint(0, 1)]
         self.state.currStep = 0
@@ -165,6 +181,9 @@ class GameInstance():
         embed.description = f"<@{self.state.currPlayer.discord_user.id}> Will strike first."
         embed.colour = discord.Colour.random()
         await self.thread.send(embed=embed)
+
+        # Ping both players
+        await self.thread.send(content=f"{self.state.p1.discord_user.mention}{self.state.p2.discord_user.mention}")
 
         # Take turns banning based on strikeOrder
         for step in range(len(self.ruleset.strikeOrder)):
@@ -206,6 +225,7 @@ class GameInstance():
         
         # Update Embed
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
+        selected_stage_embed.clear_fields()
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
         await self.banning_msgs[0].edit(embed=selected_stage_embed)
 
@@ -242,6 +262,8 @@ class GameInstance():
 
             # Create banning view
             self.state.currPlayer = self.state.lastWinner
+            # Ping currPlayer
+            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
@@ -261,6 +283,8 @@ class GameInstance():
                 self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
             
             ### Do opponent counterpick ###
+            # Ping currPlayer
+            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             counterpick_view = await self.send_stage_msg(is_picking=True)
             chosen_stage:Stage = None
 
@@ -291,6 +315,7 @@ class GameInstance():
 
             # Update Embed
             selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
+            selected_stage_embed.clear_fields()
             selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
             await self.banning_msgs[0].edit(embed=selected_stage_embed)
 

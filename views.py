@@ -101,9 +101,19 @@ class ReportWinnerInput(ui.View):
 
         # Create confirm or deny view
         # Get player(s) who didn't make this report.
-        confirm_view:ConfirmWinner = ConfirmWinner(target_users=[u.discord_user for u in self.state.players if u.discord_user != interaction.user])
-        # TODO: Create embed displaying reported score
-        self.confirm_message = await interaction.followup.send(content=self.state.players[self.value].display_name, view=confirm_view)
+        target_users = [u.discord_user for u in self.state.players if u.discord_user != interaction.user]
+        # Get the reported winner
+        reported_winner = self.state.players[self.value]
+        # Create the view
+        confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users)
+        # Create the embed
+        confirm_embed:BaseEmbed = BaseEmbed(instance_info=self.instance_info)
+        confirm_embed.colour = discord.Colour.dark_green()
+        confirm_embed.title = "Reported Winner:"
+        confirm_embed.description = f"{interaction.user.mention} reported {reported_winner.discord_user.mention} won."
+        confirm_embed.thumbnail.url = reported_winner.discord_user.avatar.url
+        
+        self.confirm_message = await interaction.followup.send(embed=confirm_embed, view=confirm_view)
 
         await confirm_view.wait()
 
@@ -127,7 +137,7 @@ class ReportWinnerInput(ui.View):
             embed.add_field(name="Reported by:", value=f"<@{interaction.user.id}>")
             embed.add_field(name="\u200b", value="If an agreement cannot be reached, please contact a Tournament Organiser", inline=False)
 
-            await self.confirm_message.edit(content=None, embed=embed, view=None)
+            await self.confirm_message.edit(embed=embed, view=None)
             self.confirm_message = None
 
             self.value = None
@@ -198,6 +208,53 @@ class ConfirmWinner(ui.View):
                 return True
         return False
 
+class ConfirmHostView(ui.View):
+    def __init__(self, target_users:list[discord.User]):
+        super().__init__(timeout=None)
+        self.target_users:list[discord.User] = target_users
+        self.accepted_users:list[discord.User] = []
+        self.value = None
+
+        # HACK: To allow 1v1's with myself for testing
+        if self.target_users.count(target_users[0]) > 1:
+            self.target_users.remove(target_users[0])
+        
+        self.update_button_label()
+
+        if len(self.target_users) == 0:
+            self.value = True
+            self.stop()
+        
+    
+    def update_button_label(self):
+        self.accept_button.label = f"Connected & Ready ({len(self.accepted_users)}/{len(self.target_users)})"
+
+    @ui.button(
+        label="Ready",
+        style=discord.ButtonStyle.green
+    )
+    async def accept_button(self, interaction:discord.Interaction, button:ui.Button[ConfirmHost]):
+        if interaction.user in self.accepted_users:
+            self.accepted_users.remove(interaction.user)
+            self.update_button_label()
+            await interaction.response.edit_message(view=self)
+        else:
+            self.accepted_users.append(interaction.user)
+            if len(self.accepted_users) >= len(self.target_users):
+                self.value = True
+                await interaction.response.edit_message(view=None)
+                self.stop()
+            else:
+                self.update_button_label()
+                await interaction.response.edit_message(view=self)
+    
+    async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
+        for user in self.target_users:
+            if user == interaction.user:
+                return True
+        return False
+
+
 ##### EMBEDS #####
 class BaseEmbed(discord.Embed):
     """
@@ -221,7 +278,14 @@ class SelectedStageEmbed(BaseEmbed):
         self.colour = discord.Colour.green()
         self.set_image(url=self.file.uri)
         self.title = f"Game {self.state.currGame+1}:"
-        self.description = f"{self.stage.display_name}"
+        subtitle:str
+        if stage.neutral:
+            subtitle = "Neutral Stage"
+        else:
+            subtitle = "Counterpick Stage"
+        self.description = f"{self.stage.display_name}\n-# {subtitle}"
+
+        self.add_field(name="", value=f"-# To queue the map in-game, use the chat command:\n`!queue {self.stage.display_name.lower()}`")
 
 class GameCountEmbed(BaseEmbed):
     """
@@ -237,6 +301,17 @@ class GameCountEmbed(BaseEmbed):
                 self.colour = discord.Colour.gold()
                 self.set_thumbnail(url=player.discord_user.avatar.url)
                 self.description = self.description + f"\n### Winner: {player.discord_user.mention}"
+
+class ConfirmHostEmbed(BaseEmbed):
+    def __init__(self, instance_info:InstanceInfo, state:State):
+        super().__init__(instance_info=instance_info)
+        self.title = f"Setup Match"
+        self.description = f"Please decide on a host and connect to a lobby.\nOnce in the playground, click the 'Connected & Ready' button.\n\nClick the button again to unready."
+        self.colour = discord.Colour.blurple()
+        self.add_field(
+            name="Hosting Guide:",
+            value="[How to Host a 1v1](<https://docs.google.com/document/d/1ORMaS7vzbnZR4slmFtZGiRg6U3JuhlZ4wKSnVSkfmVs/edit?usp=sharing>)"
+        )
                 
 def stage_to_file(stage:Stage) -> File:
     return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))

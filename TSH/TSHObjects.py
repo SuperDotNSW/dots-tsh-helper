@@ -12,6 +12,7 @@ class Stage():
         self.codename:str = stage_data['codename']
         self.display_name:str = stage_data['display_name']
         self.icon_path:str = stage_data['path']
+        self.neutral:bool = True
     
     def as_dict(self) -> dict:
         return {
@@ -62,7 +63,9 @@ class Ruleset():
         for stagedata in d['neutralStages']:
             self.neutralStages.append(Stage(stagedata))
         for stagedata in d['counterpickStages']:
-            self.counterpickStages.append(Stage(stagedata))
+            newstage:Stage = Stage(stagedata)
+            newstage.neutal = False
+            self.counterpickStages.append(newstage)
     
     def find_stage_by_codename(self, codename:str) -> Stage:
         for stage in self.neutralStages:
@@ -209,10 +212,13 @@ class State():
         result:list[Stage] = []
         player_to_check:Player = None
         if self.currPlayer == self.lastWinner:
-            self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
+            self.players[(self.get_currplayer_index() + 1) % len(self.players)]
         else:
             player_to_check = self.lastWinner
-
+        
+        if player_to_check == None:
+            return result
+        
         if use_mdsr:
             for s in self.stagesWon[player_to_check]:
                 result.append(s)
