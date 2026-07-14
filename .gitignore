@@ -219,3 +219,5 @@ __marimo__/
 
 # Configuration files
 *.json
+.rulesets/
+rulesets/

@@ -88,7 +88,7 @@ def get_unique_instance_id() -> int:
 
 @bot.tree.command(name='stream_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
-@app_commands.default_permissions()
+@app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
     if p1 == p2:
         await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
@@ -154,11 +154,10 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
     await interaction.response.send_message(content=f"<@{opponent.id}>", embed=embed, view=view)
     # Wait for view to timeout or close
     await view.wait()
+    # Remove user from outgoing_requests list
+    outgoing_requests.remove(interaction.user)
     if view.value is None:
         # Request timed out
-        # Remove user from active_requests list
-        outgoing_requests.remove(interaction.user)
-
         embed.title = embed.title+" (Timed Out)"
         embed.description = "~~"+embed.description+"~~"
         await interaction.edit_original_response(embed=embed, view=None)
@@ -167,8 +166,6 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
             await interaction.delete_original_response()
     elif view.value == True:
         # Request was accepted
-        # Remove user from active_requests list
-        outgoing_requests.remove(interaction.user)
 
         # Create state for game instance
         new_state:State = State(best_of)
@@ -178,10 +175,9 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         instance_id:int = get_unique_instance_id()
         # Opponent has accepted the duel request, begin initalizing the match
         message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
-        thread:discord.Thread = await message.create_thread(name=f"Match #{instance_id}: {interaction.user.display_name} vs {opponent.display_name}", \
+        thread:discord.Thread = await message.create_thread(name=f"Match #{instance_id}: {interaction.user.global_name} vs {opponent.global_name}", \
             auto_archive_duration=1440, reason="Tournament Match")
         active_instances[instance_id] = GameInstance(instance_id, thread=thread, state=new_state)
-
         
         await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
@@ -194,8 +190,6 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
 
         await interaction.edit_original_response(content="Match has concluded.")
     elif view.value == False:
-        # Remove user from active_requests list
-        outgoing_requests.remove(interaction.user)
         await interaction.delete_original_response()
     
     try:
