@@ -6,8 +6,6 @@ from random import randint
 import datetime
 import views
 
-current_ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
-
 class GameInstance():
     """
     If instance ID is set to 0 then banning will be tied directly to the currently active TSH match
@@ -19,8 +17,9 @@ class GameInstance():
         self.thread = thread
         self.active = True
         self.banning_msgs:list[discord.Message] = []
+
         # Update TSH Ruleset before beginning
-        current_ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
+        self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
     
     async def _send_error_message(self):
         embed = discord.Embed(
@@ -35,11 +34,11 @@ class GameInstance():
     def get_available_stages(self) -> list[Stage]:
         # Eliminate stages that have already been banned
         all_striked_stages = self.state.get_all_striked_stages()
-        result:list[Stage] = [stage for stage in current_ruleset.neutralStages if not (stage in all_striked_stages)]
+        result:list[Stage] = [stage for stage in self.ruleset.neutralStages if not (stage in all_striked_stages)]
         if self.state.currGame > 0:
-            dsr_stages = self.state.get_dsr_stages(current_ruleset.useMDSR)
+            dsr_stages = self.state.get_dsr_stages(self.ruleset.useMDSR)
             # Add counterpick stages
-            for stage in [stage for stage in current_ruleset.counterpickStages if not (stage in all_striked_stages)]:
+            for stage in [stage for stage in self.ruleset.counterpickStages if not (stage in all_striked_stages)]:
                 result.append(stage)
             # Remove stages that have been DSR'd
             result = [stage for stage in result if not (stage in dsr_stages)]
@@ -74,9 +73,9 @@ class GameInstance():
             view = self.create_stage_select_input()
         else:    
             if self.state.currGame == 0:
-                view = self.create_stage_banning_input(current_ruleset.strikeOrder[self.state.currStep])
+                view = self.create_stage_banning_input(self.ruleset.strikeOrder[self.state.currStep])
             else:
-                view = self.create_stage_banning_input(current_ruleset.banCount)
+                view = self.create_stage_banning_input(self.ruleset.banCount)
 
         embed_batches:list[[discord.Embed]] = []
         file_batches:list[[File]] = []
@@ -150,7 +149,7 @@ class GameInstance():
         await self.thread.send(embed=embed)
 
         # Take turns banning based on strikeOrder
-        for step in range(len(current_ruleset.strikeOrder)):
+        for step in range(len(self.ruleset.strikeOrder)):
             # Send messsage and wait for input
             bans_view = await self.send_stage_msg()
 
@@ -162,7 +161,7 @@ class GameInstance():
                 # Ban Stage(s)
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
                 for codename in bans_view.values:
-                    stage:Stage = current_ruleset.find_stage_by_codename(codename)
+                    stage:Stage = self.ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
                 
@@ -235,7 +234,7 @@ class GameInstance():
                 # Ban Stage(s)
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
                 for codename in bans_view.values:
-                    stage:Stage = current_ruleset.find_stage_by_codename(codename)
+                    stage:Stage = self.ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
                 
@@ -254,7 +253,7 @@ class GameInstance():
             else:
                 # Pick Stage
                 print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {counterpick_view.values}")
-                chosen_stage = current_ruleset.find_stage_by_codename(counterpick_view.values[0])
+                chosen_stage = self.ruleset.find_stage_by_codename(counterpick_view.values[0])
                 self.state.stagesPicked.append(chosen_stage)
                 
                 # Increment step
@@ -312,8 +311,8 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
                     name = f"~~{name}~~ (Banned)"
                     colour = discord.Colour.red()
             # DSR
-            if (current_ruleset.useDSR or current_ruleset.useMDSR):
-                if stage in state.get_dsr_stages(current_ruleset.useMDSR):
+            if (self.ruleset.useDSR or self.ruleset.useMDSR):
+                if stage in state.get_dsr_stages(self.ruleset.useMDSR):
                     name = f"~~{name}~~ (DSR)"
                     colour = discord.Colour.dark_red()
 
@@ -334,15 +333,15 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
 
     if state.currGame == 0:
         # Neutral Stages only
-        container:FileEmbedContainer = _create_embeds(current_ruleset.neutralStages, True)
+        container:FileEmbedContainer = _create_embeds(instance.ruleset.neutralStages, True)
         result.embeds += container.embeds
         result.files += container.files
     else:
         # All Stages
-        container:FileEmbedContainer = _create_embeds(current_ruleset.neutralStages, True)
+        container:FileEmbedContainer = _create_embeds(instance.ruleset.neutralStages, True)
         result.embeds += container.embeds
         result.files += container.files
-        container = _create_embeds(current_ruleset.counterpickStages, False)
+        container = _create_embeds(instance.ruleset.counterpickStages, False)
         result.embeds += container.embeds
         result.files += container.files
     
