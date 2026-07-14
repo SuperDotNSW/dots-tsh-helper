@@ -6,11 +6,13 @@ from random import randint
 import datetime
 import views
 
+# This whole file is a complete disaster mess of spaghetti & poor planning. It works though! (for now)
+
 class GameInstance():
     """
     If instance ID is set to 0 then banning will be tied directly to the currently active TSH match
     """
-    def __init__(self, ID:int, thread:discord.Thread, state:State):
+    def __init__(self, ID:int, thread:discord.Thread, state:State, ruleset:Ruleset=None):
         self.ID:int = ID
         self.state:State = state
         self.instinf = views.InstanceInfo(ID, state)
@@ -18,8 +20,11 @@ class GameInstance():
         self.active = True
         self.banning_msgs:list[discord.Message] = []
 
-        # Update TSH Ruleset before beginning
-        self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
+        if ruleset == None:
+            # Fetch directly from TSH if no ruleset is provided
+            self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
+        else:
+            self.ruleset = ruleset
     
     async def _send_error_message(self):
         embed = discord.Embed(
@@ -45,6 +50,9 @@ class GameInstance():
         
         return result
     
+    # FIXME: If you would ask me why these next 4 functions werent written in views.py id literally have no answer for you
+    # i cant be arsed to move them so they're staying here
+
     # Creates a view that allows the user to input their bans in a dropdown
     def create_stage_banning_input(self, ban_count:int) -> views.StageBanningInput:
         # Find remaining pool of stages
@@ -83,9 +91,19 @@ class GameInstance():
             # Gets the next 10 embeds in stage_embeds and packs them into a list
             # which then gets appended to embed_batches and file_batches
             embed_batches.append([stage_embeds.embeds[emb] for emb in range(i, i + min(len(stage_embeds.embeds)-i, 10))])
-            # -1 file to account for the "Currently Banning" embed
-            # FIXME: DOESNT WORK FOR FINAL STAGE IN 10 STAGE POOL (1st embed in second message)
-            file_batches.append([stage_embeds.files[emb-1] for emb in range(i, i + min(len(stage_embeds.files)-i, 10))])
+        
+        if len(stage_embeds.files) >= 10:
+            # Only append the first 9 files to the first batch, as the "Currently Banning" embed is taking up a slot
+            file_batches.append([stage_embeds.files[fil] for fil in range(0, 9)])
+            
+            # Continue appending as usual afterwards
+            for i in range(9, len(stage_embeds.files), 10):
+                file_batches.append([stage_embeds.files[fil] for fil in range(i, i + min(len(stage_embeds.files)-i, 10))])
+        else:
+            for i in range(0, len(stage_embeds.files), 10):
+                file_batches.append([stage_embeds.files[fil] for fil in range(i, i + min(len(stage_embeds.files)-i, 10))])
+
+
         
         if len(self.banning_msgs) == 0:
             # Send new messages if banning_msgs is empty
@@ -175,7 +193,7 @@ class GameInstance():
 
         print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {chosen_stage.display_name}")
 
-        # This is terrible spaghetti. Oh well!
+        # This is terrible. Oh well!
         selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
         winner = await self.create_report_winner_view(selected_stage_embed)
 
@@ -200,6 +218,7 @@ class GameInstance():
             # End Match~!
             return
 
+        # Loop through rounds until winner
         for game in range(1, self.state.best_of+1):
             # Announce current standings
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
@@ -217,7 +236,6 @@ class GameInstance():
             self.state.currStep = 0
             self.state.reset_strikes()
             
-            # TODO: Loop through rounds until winner
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
             ### Do winner bans ###
@@ -279,8 +297,6 @@ class GameInstance():
             self.banning_msgs = []
 
             ### Repeat ###
-            # await self._send_error_message()
-            # return
 
 
 class FileEmbedContainer:

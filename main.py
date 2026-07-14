@@ -188,7 +188,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")
 
-        await interaction.edit_original_response(content="Match has concluded.")
+        await interaction.edit_original_response(content="> Match has concluded.")
     elif view.value == False:
         await interaction.delete_original_response()
     
