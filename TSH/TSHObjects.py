@@ -64,7 +64,7 @@ class Ruleset():
             self.neutralStages.append(Stage(stagedata))
         for stagedata in d['counterpickStages']:
             newstage:Stage = Stage(stagedata)
-            newstage.neutal = False
+            newstage.neutral = False
             self.counterpickStages.append(newstage)
     
     def find_stage_by_codename(self, codename:str) -> Stage:
