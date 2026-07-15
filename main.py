@@ -93,6 +93,10 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     if p1 == p2:
         await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
         return
+    
+    if active_instances[0] != None:
+        await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
+        return
 
     gamestate = State(tsh_data=TSHCommunicator.fetch_data())
     gamestate.p1.discord_user = p1
@@ -102,10 +106,38 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     TSHCommunicator.post_rps_win(randint(0,1))
 
     embed:discord.Embed = discord.Embed(title=f"Stream Match ({p1.global_name} vs {p2.global_name})",\
-        description="Please strike stages at http://172.26.3.130:5000/stage-strike-app",\
+        description="Please strike stages in the thread on this message",\
             colour=discord.Colour.red())
     
     await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">", embed=embed)
+
+    message = await interaction.original_response()
+    thread:discord.Thread = await message.create_thread(name=f"Stream Match: {interaction.user.global_name} vs {opponent.global_name}", \
+        auto_archive_duration=1440, reason="Tournament Match")
+    
+    active_instances[0] = GameInstance(0, thread=thread, state=gamestate)
+
+    await active_instances[0].run_stream_match()
+
+    # Delete match after ending
+    if active_instances[0] != None:
+        active_instances.pop(0)    
+    print(f"Killed match instance #{0} (Stream match)")
+    
+    # FIXME: this interaction has suddenly started failing for some reason??
+    await message.edit(content="> Stream match has concluded.", embed=None)
+
+@bot.tree.command(name='kill_stream_match', description='Ends the currently running stream match')
+@app_commands.default_permissions(permissions=16) # Manage Channels
+async def kill_stream_match(interaction: discord.Interaction):
+    if active_instances[0] != None:
+        # TODO: Figure out a way to kill an actively running instance instantly
+        active_instances[0].ID = -1
+        active_instances.pop(0)
+        await interaction.response.send_message(content="Removed ID 0 from stream instance & instances list.\nThe match instance will eventually error out and end on its own.", ephemeral=True)
+        return
+    
+    await interaction.response.send_message(content="No stream match is currently running.", ephemeral=True)
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
@@ -130,14 +162,12 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
     for instance in active_instances:
         instance = active_instances[instance]
         # Check if user sending command is already in a match
-        if instance.state.p1.discord_user == interaction.user or\
-            instance.state.p2.discord_user == interaction.user:
+        if instance.state.p1.discord_user == interaction.user or instance.state.p2.discord_user == interaction.user:
             await interaction.response.send_message(content=f"You are already in match #{instance.ID}.", ephemeral=True)
             return
 
         # Check if requested opponent is already in a match
-        if instance.state.p1.discord_user == opponent or\
-            instance.state.p2.discord_user == opponent:
+        if instance.state.p1.discord_user == opponent or instance.state.p2.discord_user == opponent:
             await interaction.response.send_message(content=f"<@{opponent.id}> is already participating in match #{instance.ID}.", ephemeral=True)
             return
     

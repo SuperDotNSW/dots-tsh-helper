@@ -36,6 +36,11 @@ class GameInstance():
         embed.set_footer(text=f"#{self.ID}")
         await self.thread.send(embed=embed)
     
+    def is_stream_match(self) -> bool:
+        return self.ID == 0
+
+    #region Helper Functions
+
     def get_available_stages(self) -> list[Stage]:
         # Eliminate stages that have already been banned
         all_striked_stages = self.state.get_all_striked_stages()
@@ -152,6 +157,8 @@ class GameInstance():
         # Return resulting winner
         return self.state.players[report_winner_view.value]
 
+    #endregion
+
     # Instance gets terminated when this function ends
     async def run_match(self):
         # Do player setup
@@ -167,7 +174,7 @@ class GameInstance():
             await view.wait()
 
             if view.value != True:
-                self._send_error_message()
+                await self._send_error_message()
                 return
 
         # Do RPS for first ban
@@ -322,6 +329,31 @@ class GameInstance():
             self.banning_msgs = []
 
             ### Repeat ###
+
+    # Re-implementation of run_match() that communicates directly with TSH through POST requests
+    async def run_stream_match(self):
+        self.current_tsh_data:dict = TSHCommunicator.fetch_data()
+
+        # Do player setup
+
+        # I think this will garbage collect the variables when it leaves this scope??
+        if True:
+            view = views.ConfirmHostView([player.discord_user for player in self.state.players])
+            await self.thread.send(
+                embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
+                view=view
+            )
+
+            await view.wait()
+
+            if view.value != True:
+                await self._send_error_message()
+                return
+        
+        # Check to see if we should still continue execution
+        if not self.is_stream_match():
+            await self._send_error_message()
+            return
 
 
 class FileEmbedContainer:

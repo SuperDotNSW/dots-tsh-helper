@@ -285,7 +285,7 @@ class SelectedStageEmbed(BaseEmbed):
             subtitle = "Counterpick Stage"
         self.description = f"{self.stage.display_name}\n-# {subtitle}"
 
-        self.add_field(name="", value=f"-# To queue the map in-game, use the chat command:\n`!queue {self.stage.display_name.lower()}`")
+        self.add_field(name="", value=f"-# To queue the map in-game, use the chat command:\n```!queue {self.stage.display_name.lower()}```")
 
 class GameCountEmbed(BaseEmbed):
     """
