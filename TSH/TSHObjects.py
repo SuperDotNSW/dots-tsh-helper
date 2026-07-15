@@ -239,9 +239,9 @@ class State():
         result:list[Stage] = []
         player_to_check:Player = None
         if self.currPlayer == self.lastWinner:
-            self.players[(self.get_currplayer_index() + 1) % len(self.players)]
+            player_to_check = self.players[(self.get_currplayer_index() + 1) % len(self.players)]
         else:
-            player_to_check = self.lastWinner
+            player_to_check = self.currPlayer
         
         if player_to_check == None:
             return result

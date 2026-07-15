@@ -295,12 +295,14 @@ class GameCountEmbed(BaseEmbed):
         super().__init__(instance_info=instance_info)
         self.title = f"Game {state.currGame+1}/{state.best_of}"
         self.description = f"# {state.get_games_won(state.p1)} - {state.get_games_won(state.p2)}"
-        self.add_field(name=f"Best of: {state.best_of}", value=f"-# {state.p1.discord_user.mention} vs {state.p2.discord_user.mention}")
+        self.add_field(name=f"Best of: {state.best_of}", value=f"-# {state.p1.discord_user.mention} vs {state.p2.discord_user.mention}", inline=False)
         for player in state.players:
             if state.get_games_won(player) >= state.get_games_to_win():
+                self.title = f"Match Finished!"
                 self.colour = discord.Colour.gold()
                 self.set_thumbnail(url=player.discord_user.avatar.url)
                 self.description = self.description + f"\n### Winner: {player.discord_user.mention}"
+                self.add_field(name="", value="Please report your scores into the start.gg bracket (if applicable)", inline=False)
 
 class ConfirmHostEmbed(BaseEmbed):
     def __init__(self, instance_info:InstanceInfo, state:State):
