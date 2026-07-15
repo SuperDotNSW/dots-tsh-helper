@@ -108,7 +108,7 @@ class GameInstance():
             for i in range(0, len(stage_embeds.files), 10):
                 file_batches.append([stage_embeds.files[fil] for fil in range(i, i + min(len(stage_embeds.files)-i, 10))])
         
-        
+
         if len(self.banning_msgs) == 0:
             # Send new messages if banning_msgs is empty
             for i in range(len(embed_batches)):
@@ -186,6 +186,7 @@ class GameInstance():
         embed.title = "RPS Winner"
         embed.description = f"<@{self.state.currPlayer.discord_user.id}> Will strike first."
         embed.colour = discord.Colour.random()
+        embed.set_thumbnail(url=self.state.currPlayer.discord_user.avatar.url)
         await self.thread.send(embed=embed)
 
         # Ping both players
@@ -363,6 +364,7 @@ class GameInstance():
         embed.title = "RPS Winner"
         embed.description = f"<@{self.state.currPlayer.discord_user.id}> Will strike first."
         embed.colour = discord.Colour.random()
+        embed.set_thumbnail(url=self.state.currPlayer.discord_user.avatar.url)
         await self.thread.send(embed=embed)
 
         # Ping both players

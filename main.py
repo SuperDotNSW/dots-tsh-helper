@@ -105,7 +105,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
-    embed:discord.Embed = discord.Embed(title=f"Stream Match ({p1.global_name} vs {p2.global_name})",\
+    embed:discord.Embed = discord.Embed(title=f"Stream Match ({gamestate.p1.display_name} vs {gamestate.p2.display_name})",\
         description="Please strike stages in the thread on this message",\
             colour=discord.Colour.red())
     
@@ -217,7 +217,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         # Delete match after ending
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")
-        
+
         # FIXME: this interaction has suddenly started failing for some reason??
         await interaction.edit_original_response(content="> Match has concluded.")
     elif view.value == False:
