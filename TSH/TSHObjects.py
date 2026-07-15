@@ -125,11 +125,11 @@ class State():
             self.p2
         ]
         self.currPlayer:Player = self.players[0]
-        self.stagesWon:dict[Player, [list[Stage]]] = {
+        self.stagesWon:dict[Player, list[Stage]] = {
             self.p1 : [],
             self.p2 : []
         }
-        self.strikedBy:dict[Player, [list[Stage]]] = {
+        self.strikedBy:dict[Player, list[Stage]] = {
             self.p1 : [],
             self.p2 : []
         }
@@ -138,7 +138,7 @@ class State():
             self.best_of = tsh_data['best_of']
             self.update_from_tsh_data(tsh_data)
     
-    def update_from_tsh_data(self, data:dict):
+    def update_from_tsh_data(self, data:dict, ruleset:Ruleset=None):
         d = data['state']
         self.canRedo = d['canRedo']
         self.canUndo = d['canUndo']
@@ -148,16 +148,43 @@ class State():
         self.gentlemans = d['gentlemans']
         self.lastWinner = self.players[d['lastWinner']]
         
-        # TODO: Convert stage codenames to Stage objects
-        # self.selectedStage = d['selectedStage']
-        # self.stagesPicked = d['stagesPicked']
-        # TODO: gulp
-        # self.stagesWon = d['stagesWon']
-        # self.strikedBy = d['strikedBy']
-        # self.strikedStages = d['strikedStages']
-
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
+
+        # Only retrieve stage information if a ruleset is provided
+        if ruleset:
+            self.selectedStage = ruleset.find_stage_by_codename(d['selectedStage'])
+            self.stagesPicked = []
+            for codename in d['stagesPicked']:
+                self.stagesPicked.append(ruleset.find_stage_by_codename(codename))
+            
+            # Reset stagesWon
+            self.stagesWon = {
+                self.p1 : [],
+                self.p2 : []
+            }
+            # Retrieve from TSH
+            for p in range(len(d['stagesWon'])):
+                for codename in d['stagesWon'][p]:
+                    self.stagesWon[self.players[p]].append(ruleset.find_stage_by_codename(codename))
+            
+            # Reset strikedBy
+            self.strikedBy = {
+                self.p1 : [],
+                self.p2 : []
+            }
+            # Retrieve from TSH
+            for p in range(len(d['strikedBy'])):
+                for codename in d['strikedBy'][p]:
+                    self.strikedBy[self.players[p]].append(ruleset.find_stage_by_codename(codename))
+            
+            # Reset strikedStages
+            self.strikedStages = [[]]
+            # Retrieve from TSH
+            for step in range(len(d['strikedStages'])):
+                self.strikedStages.append([])
+                for codename in d['strikedStages'][step]:
+                    self.strikedStages[step].append(ruleset.find_stage_by_codename(codename))
     
     def get_games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)
@@ -189,7 +216,7 @@ class State():
         return stages
 
     def get_pending_striked_stages(self) -> list[Stage]:
-        if len(self.strikedStages) < self.currStep:
+        if len(self.strikedStages) <= self.currStep:
             return []
         return self.strikedStages[self.currStep]
     

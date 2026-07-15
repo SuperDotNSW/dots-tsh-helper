@@ -28,6 +28,9 @@ def post_stage_strike_undo():
     requests.post(f"{BASE_URL}/stage_strike_undo")
     fetch_data()
 
+def post_stage_strike_match_win(winner:int):
+    requests.post(f"{BASE_URL}/stage_strike_match_win", json={'winner': winner})
+
 def post_rps_win(winner:int):
     requests.post(f"{BASE_URL}/stage_strike_rps_win", json={'winner': winner})
 

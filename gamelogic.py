@@ -107,8 +107,7 @@ class GameInstance():
         else:
             for i in range(0, len(stage_embeds.files), 10):
                 file_batches.append([stage_embeds.files[fil] for fil in range(i, i + min(len(stage_embeds.files)-i, 10))])
-
-
+        
         
         if len(self.banning_msgs) == 0:
             # Send new messages if banning_msgs is empty
@@ -289,7 +288,9 @@ class GameInstance():
                 self.state.currStep += 1
                 self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
             
+
             ### Do opponent counterpick ###
+
             # Ping currPlayer
             await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             counterpick_view = await self.send_stage_msg(is_picking=True)
@@ -329,10 +330,17 @@ class GameInstance():
             self.banning_msgs = []
 
             ### Repeat ###
+        
+        await self._send_error_message()
+        return
 
     # Re-implementation of run_match() that communicates directly with TSH through POST requests
+    # This is extremeley hacky and will break instantly if any unknown POST requests or resets to the stage striking tool happen
+    # Loooots of duplicated code
     async def run_stream_match(self):
-        self.current_tsh_data:dict = TSHCommunicator.fetch_data()
+        # Update TSH state
+        self.current_tsh_data = TSHCommunicator.fetch_data()
+        self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
         # Do player setup
 
@@ -350,10 +358,200 @@ class GameInstance():
                 await self._send_error_message()
                 return
         
-        # Check to see if we should still continue execution
+        # Send RPS feedback
+        embed:discord.Embed = views.BaseEmbed(self.instinf)
+        embed.title = "RPS Winner"
+        embed.description = f"<@{self.state.currPlayer.discord_user.id}> Will strike first."
+        embed.colour = discord.Colour.random()
+        await self.thread.send(embed=embed)
+
+        # Ping both players
+        await self.thread.send(content=f"{self.state.p1.discord_user.mention}{self.state.p2.discord_user.mention}")
+        
+        # Take turns banning based on strikeOrder
+        for step in range(len(self.ruleset.strikeOrder)):
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+            # Send messsage and wait for input
+            bans_view = await self.send_stage_msg()
+
+            if bans_view.values is None:
+                # Something went wrong (timeout most likely)
+                await self._send_error_message()
+                return
+            else:
+                # HACK: Check to see if we should still continue execution
+                if not self.is_stream_match():
+                    await self._send_error_message()
+                    return
+
+                # POST stage bans and update TSH data
+                print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
+                for codename in bans_view.values:
+                    stage:Stage = self.ruleset.find_stage_by_codename(codename)
+                    TSHCommunicator.post_click_stage(stage_object=stage)
+                TSHCommunicator.post_confirm_stage_strike()
+                
+                # Update TSH state
+                self.current_tsh_data = TSHCommunicator.fetch_data()
+                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+                # We will assume we were successful and proceed to the next step.
+        
+        # One remaining available stage, stage has been chosen
+        chosen_stage:Stage = self.get_available_stages()[0]
+
+        print(f"MATCH #{self.ID}: CHOSEN STARTER STAGE: {chosen_stage.display_name}")
+
+        # This is terrible. Oh well!
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
+        winner = await self.create_report_winner_view(selected_stage_embed)
+
+        print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {winner.display_name}")
+
+        # HACK: Check to see if we should still continue execution
         if not self.is_stream_match():
             await self._send_error_message()
             return
+        
+        # POST winner
+        TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
+        # Update TSH state
+        self.current_tsh_data = TSHCommunicator.fetch_data()
+        self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+        # We are now assuming it is game 2
+
+        # Update Embed
+        selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
+        selected_stage_embed.clear_fields()
+        selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
+        await self.banning_msgs[0].edit(embed=selected_stage_embed)
+
+        self.banning_msgs = []
+
+        # End match immediately if bo1
+        if self.state.best_of == 1:
+            print(f"MATCH #{self.ID}: {winner.display_name} Has won the set!")
+            await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
+            # End Match~!
+            return
+
+        # Loop through rounds until winner
+        for game in range(1, self.state.best_of+1):
+            # HACK: Check to see if we should still continue execution
+            if not self.is_stream_match():
+                await self._send_error_message()
+                return
+            
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+            # Announce current standings
+            await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
+
+            # Check for winner
+            for player in self.state.players:
+                if self.state.get_games_won(player) >= self.state.get_games_to_win():
+                    # Player has won
+                    print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
+                    # End Match~!
+                    return
+            
+            print(f"MATCH #{self.ID}: GAME {game+1} START")
+
+            ### Do winner bans ###
+
+            # Ping currPlayer
+            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
+            # Create banning view
+            bans_view = await self.send_stage_msg(is_picking=False)
+
+            if bans_view.values is None:
+                # Something went wrong (timeout most likely)
+                await self._send_error_message()
+                return
+            else:
+                # HACK: Check to see if we should still continue execution
+                if not self.is_stream_match():
+                    await self._send_error_message()
+                    return
+
+                # POST stage bans and update TSH data
+                print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
+                for codename in bans_view.values:
+                    stage:Stage = self.ruleset.find_stage_by_codename(codename)
+                    TSHCommunicator.post_click_stage(stage_object=stage)
+                TSHCommunicator.post_confirm_stage_strike()
+                
+                # Update TSH state
+                self.current_tsh_data = TSHCommunicator.fetch_data()
+                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+                # We will assume we were successful and proceed to the next step.
+            
+
+            ### Do opponent counterpick ###
+
+            # Ping currPlayer
+            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
+            counterpick_view = await self.send_stage_msg(is_picking=True)
+
+            if counterpick_view.values is None:
+                # Something went wrong (timeout most likely)
+                await self._send_error_message()
+                return
+            else:
+                # HACK: Check to see if we should still continue execution
+                if not self.is_stream_match():
+                    await self._send_error_message()
+                    return
+                
+                # Pick Stage
+                print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {counterpick_view.values}")
+                chosen_stage:Stage = self.ruleset.find_stage_by_codename(counterpick_view.values[0])
+                TSHCommunicator.post_click_stage(stage_object=chosen_stage)
+                TSHCommunicator.post_confirm_stage_strike()
+
+                # Update TSH state
+                self.current_tsh_data = TSHCommunicator.fetch_data()
+                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+            
+
+            ### Report winner ###
+
+            # This is terrible spaghetti. Oh well!
+            selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
+            winner = await self.create_report_winner_view(selected_stage_embed)
+
+            print(f"MATCH #{self.ID}: REPORTED GAME {game+1} WINNER: {winner.display_name}")
+
+            # HACK: Check to see if we should still continue execution
+            if not self.is_stream_match():
+                await self._send_error_message()
+                return
+        
+            # POST winner
+            TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+
+            # Update Embed
+            selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
+            selected_stage_embed.clear_fields()
+            selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
+            await self.banning_msgs[0].edit(embed=selected_stage_embed)
+
+            self.banning_msgs = []
+
+            ### Repeat ###
+
+        await self._send_error_message()
+        return
 
 
 class FileEmbedContainer:

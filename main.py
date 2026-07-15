@@ -90,11 +90,11 @@ def get_unique_instance_id() -> int:
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
-    if p1 == p2:
-        await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
-        return
+    # if p1 == p2:
+    #     await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
+    #     return
     
-    if active_instances[0] != None:
+    if active_instances.get(0) != None:
         await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
         return
 
@@ -112,7 +112,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">", embed=embed)
 
     message = await interaction.original_response()
-    thread:discord.Thread = await message.create_thread(name=f"Stream Match: {interaction.user.global_name} vs {opponent.global_name}", \
+    thread:discord.Thread = await message.create_thread(name=f"Stream Match: {gamestate.p1.display_name} vs {gamestate.p2.display_name}", \
         auto_archive_duration=1440, reason="Tournament Match")
     
     active_instances[0] = GameInstance(0, thread=thread, state=gamestate)
@@ -120,7 +120,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     await active_instances[0].run_stream_match()
 
     # Delete match after ending
-    if active_instances[0] != None:
+    if active_instances.get(0) != None:
         active_instances.pop(0)    
     print(f"Killed match instance #{0} (Stream match)")
     
@@ -130,7 +130,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 @bot.tree.command(name='kill_stream_match', description='Ends the currently running stream match')
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def kill_stream_match(interaction: discord.Interaction):
-    if active_instances[0] != None:
+    if active_instances.get(0) != None:
         # TODO: Figure out a way to kill an actively running instance instantly
         active_instances[0].ID = -1
         active_instances.pop(0)
