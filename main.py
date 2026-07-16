@@ -128,7 +128,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 
     message = await interaction.original_response()
     thread:discord.Thread = await message.create_thread(name=f"Stream Match: {new_state.p1.display_name} vs {new_state.p2.display_name}", \
-        auto_archive_duration=1440, reason="Tournament Match")
+        auto_archive_duration=60, reason="Tournament Match")
     
     active_instances[0] = GameInstance(0, thread=thread, state=new_state)
 
@@ -213,7 +213,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         instance_id:int = get_unique_instance_id()
         message = await interaction.original_response() # HATE. LET ME TELL YOU HOW MUCH I HAVE COME TO HATE
         thread:discord.Thread = await message.create_thread(name=f"Match #{instance_id}: {interaction.user.global_name} vs {opponent.global_name}", \
-            auto_archive_duration=1440, reason="Tournament Match")
+            auto_archive_duration=60, reason="Tournament Match")
         # Create game instance and add it to active_instances[].
         active_instances[instance_id] = GameInstance(instance_id, thread=thread, state=new_state)
         
