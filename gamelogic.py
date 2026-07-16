@@ -42,6 +42,18 @@ class GameInstance():
         embed.set_footer(text=f"#{self.ID}")
         await self.thread.send(embed=embed)
     
+    async def terminate_match(self):
+        self.async_task.cancel()
+        
+        embed = discord.Embed(
+            colour=discord.Colour.red(),
+            title="ERROR: Match terminated",
+            timestamp=datetime.datetime.now(datetime.UTC),
+            description="An administrator has called for this match to be terminated."
+        )
+        embed.set_footer(text=f"#{self.ID}")
+        await self.thread.send(embed=embed)
+
     def is_stream_match(self) -> bool:
         return self.ID == 0
 

@@ -99,13 +99,22 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
         return
 
     new_state = State(tsh_data=TSHCommunicator.fetch_data())
+    
+    # User Error Checks
+    if new_state.p1._display_name == "":
+        await interaction.response.send_message(content="TSH Error: `p1` Doesn't have a name", ephemeral=True)
+        return
+    if new_state.p2._display_name == "":
+        await interaction.response.send_message(content="TSH Error: `p2` Doesn't have a name", ephemeral=True)
+        return
+    
+    if new_state.best_of % 2 != 1 or new_state.best_of < 1:
+        await interaction.response.send_message(content="TSH Error: `best_of` must be an odd number above 0.", ephemeral=True)
+        return
+    
     new_state.p1.discord_user = p1
     new_state.p2.discord_user = p2
     
-    if new_state.best_of % 2 != 1 or new_state.best_of < 1:
-        await interaction.response.send_message(content="`best_of` must be an odd number above 0.", ephemeral=True)
-        return
-
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
@@ -133,19 +142,6 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     
     # FIXME: this interaction has suddenly started failing for some reason??
     await message.edit(content="> Stream match has concluded.", embed=None)
-
-@bot.tree.command(name='kill_match', description='Ends the currently running match by ID')
-@app_commands.describe(match_ID="The match ID to terminate")
-@app_commands.default_permissions(permissions=16) # Manage Channels
-async def kill_match(interaction: discord.Interaction, match_ID:int):
-    if active_instances.get(match_ID) != None:
-        await active_instances[match_ID]._send_error_message()
-        active_instances[match_ID].async_task.cancel()
-        active_instances.pop(match_ID)
-        await interaction.response.send_message(content=f"Removed Match #{match_ID} from instances list.", ephemeral=True)
-        return
-    
-    await interaction.response.send_message(content=f"There is no match with ID #{match_ID}.", ephemeral=True)
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
@@ -238,6 +234,17 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         outgoing_requests.remove(interaction.user)
     except:
         pass
+
+@bot.tree.command(name='kill_match', description='Ends the currently running match by ID')
+@app_commands.describe(match_id="The match ID to terminate")
+@app_commands.default_permissions(permissions=16) # Manage Channels
+async def kill_match(interaction: discord.Interaction, match_id:int):
+    if active_instances.get(match_id) != None:
+        await active_instances[match_id].terminate_match()
+        await interaction.response.send_message(content=f"Sent termination command to Match #{match_id}.", ephemeral=True)
+        return
+    
+    await interaction.response.send_message(content=f"There is no match with ID #{match_id}.", ephemeral=True)
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)
