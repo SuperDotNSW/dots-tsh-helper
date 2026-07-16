@@ -388,11 +388,6 @@ class GameInstance():
                 await self._send_error_message()
                 return
             else:
-                # HACK: Check to see if we should still continue execution
-                if not self.is_stream_match():
-                    await self._send_error_message()
-                    return
-
                 # POST stage bans and update TSH data
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
                 for codename in bans_view.values:
@@ -416,11 +411,6 @@ class GameInstance():
         winner = await self.create_report_winner_view(selected_stage_embed)
 
         print(f"MATCH #{self.ID}: REPORTED GAME 1 WINNER: {winner.display_name}")
-
-        # HACK: Check to see if we should still continue execution
-        if not self.is_stream_match():
-            await self._send_error_message()
-            return
         
         # POST winner
         TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
@@ -451,11 +441,6 @@ class GameInstance():
 
         # Loop through rounds until winner
         for game in range(1, self.state.best_of+1):
-            # HACK: Check to see if we should still continue execution
-            if not self.is_stream_match():
-                await self._send_error_message()
-                return
-            
             # Update TSH state
             self.current_tsh_data = TSHCommunicator.fetch_data()
             self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
@@ -489,11 +474,6 @@ class GameInstance():
                 await self._send_error_message()
                 return
             else:
-                # HACK: Check to see if we should still continue execution
-                if not self.is_stream_match():
-                    await self._send_error_message()
-                    return
-
                 # POST stage bans and update TSH data
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
                 for codename in bans_view.values:
@@ -519,11 +499,6 @@ class GameInstance():
                 await self._send_error_message()
                 return
             else:
-                # HACK: Check to see if we should still continue execution
-                if not self.is_stream_match():
-                    await self._send_error_message()
-                    return
-                
                 # Pick Stage
                 print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {counterpick_view.values}")
                 chosen_stage:Stage = self.ruleset.find_stage_by_codename(counterpick_view.values[0])
@@ -542,11 +517,6 @@ class GameInstance():
             winner = await self.create_report_winner_view(selected_stage_embed)
 
             print(f"MATCH #{self.ID}: REPORTED GAME {game+1} WINNER: {winner.display_name}")
-
-            # HACK: Check to see if we should still continue execution
-            if not self.is_stream_match():
-                await self._send_error_message()
-                return
         
             # POST winner
             TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
