@@ -44,7 +44,7 @@ class GameInstance():
     
     async def terminate_match(self):
         self.async_task.cancel()
-        
+
         embed = discord.Embed(
             colour=discord.Colour.red(),
             title="ERROR: Match terminated",

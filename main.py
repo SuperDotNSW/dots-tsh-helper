@@ -132,8 +132,10 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 
     # Create async task
     active_instances[0].async_task = asyncio.create_task(active_instances[0].run_stream_match())
-    # Await async task
-    await active_instances[0].async_task
+    # Wait for task to be done
+    while not active_instances[0].async_task.done():
+        # just check in 0.1s intervals I GUESS IDKKK
+        await asyncio.sleep(0.1)
 
     # Delete match after ending
     if active_instances.get(0) != None:
@@ -218,8 +220,10 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         
         # Create async task
         active_instances[instance_id].async_task = asyncio.create_task(active_instances[instance_id].run_match())
-        # Await async task
-        await active_instances[instance_id].async_task
+        # Wait for task to be done
+        while not active_instances[instance_id].async_task.done():
+            # just check in 0.1s intervals I GUESS IDKKK
+            await asyncio.sleep(0.1)
         # Delete match after ending
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")
