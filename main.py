@@ -257,6 +257,7 @@ async def kill_match(interaction: discord.Interaction, match_id:int):
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def reconnect_obs(interaction: discord.Interaction):
     OBSCommunicator.reconnect_obs()
+    await interaction.response.send_message(content=f"Sent a new websocket connection request.", ephemeral=True)
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)

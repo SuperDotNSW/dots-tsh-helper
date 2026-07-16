@@ -9,6 +9,7 @@ if config.get_obs_enabled():
     game_scene = obs.scene(config.get_game_scene_name())
     versus_song_source = versus_scene.source(config.get_versus_song_name())
     finale_song_source = versus_scene.source(config.get_finale_song_name())
+    striking_source = versus_scene.source(config.get_striking_name())
 
     def set_finale_music(enabled:bool=False):
         if enabled:
@@ -17,6 +18,12 @@ if config.get_obs_enabled():
         else:
             versus_song_source.show()
             finale_song_source.hide()
+    
+    def set_striking_visibility(visible:bool):
+        if visible:
+            striking_source.show()
+        else:
+            striking_source.hide()
 
     def go_to_versus_scene():
         obs.set_scene(config.get_versus_scene_name())

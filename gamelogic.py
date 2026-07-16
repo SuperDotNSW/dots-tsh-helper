@@ -386,6 +386,7 @@ class GameInstance():
         
         # Players have confirmed a lobby, we can swap scenes in OBS now
         self.swap_to_versus_scene()
+        OBSCommunicator.set_striking_visibility(True)
 
         # Send RPS feedback
         embed:discord.Embed = views.BaseEmbed(self.instinf)
@@ -442,8 +443,7 @@ class GameInstance():
         self.current_tsh_data = TSHCommunicator.fetch_data()
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
-        # Swap back to versus scene in OBS
-        self.swap_to_versus_scene()
+        # DONT swap back to versus screen in OBS yet, we will do that in the game loop
 
         # We are now assuming it is game 2
 
@@ -460,6 +460,7 @@ class GameInstance():
             print(f"MATCH #{self.ID}: {winner.display_name} Has won the set!")
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
             # End Match~!
+            OBSCommunicator.set_striking_visibility(False)
             self.swap_to_versus_scene(force_versus_music=True)
             return
 
@@ -478,6 +479,7 @@ class GameInstance():
                     # Player has won
                     print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
                     # End Match~!
+                    OBSCommunicator.set_striking_visibility(False)
                     self.swap_to_versus_scene(force_versus_music=True)
                     return
             
