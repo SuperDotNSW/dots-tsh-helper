@@ -12,6 +12,7 @@ finale_song_source:Source
 striking_source:Source
 
 def set_finale_music(enabled:bool=False):
+    global versus_song_source, finale_song_source
     if not config.get_obs_enabled(): return
     if enabled:
         versus_song_source.hide()
@@ -21,6 +22,7 @@ def set_finale_music(enabled:bool=False):
         finale_song_source.hide()
 
 def set_striking_visibility(visible:bool):
+    global striking_source
     if not config.get_obs_enabled(): return
     if visible:
         striking_source.show()
@@ -35,6 +37,7 @@ def go_to_game_scene():
     obs.set_scene(config.get_game_scene_name())
 
 def initalize_obs():
+    global versus_scene, game_scene, versus_song_source, finale_song_source, striking_source
     if not config.get_obs_enabled(): return
     obs.connect()
     

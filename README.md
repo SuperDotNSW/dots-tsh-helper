@@ -4,9 +4,7 @@ My first attempt at making a discord bot! This repository attempts to integrate 
 ### TODO:
 - Allow for multiple stage pools that players can vote on when starting their set
 - Support 'banByMaxGames' in TSH
-- Create GameInstance that can interface directly with the current TSH stream match
 - Allow for pulling ruleset(s) from .json files independent of TSH
-- Add moderation commands for TOs to force winners or terminate matches by using an ID
 
 ## Dependencies:
 - colorama           0.4.6    (Coloured messages in terminal)
