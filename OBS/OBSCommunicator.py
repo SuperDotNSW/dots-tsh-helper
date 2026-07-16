@@ -22,3 +22,6 @@ if config.get_obs_enabled():
         obs.set_scene(config.get_versus_scene_name())
     def go_to_game_scene():
         obs.set_scene(config.get_game_scene_name())
+    
+    def reconnect_obs():
+        obs.connect()

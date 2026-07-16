@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from TSH import TSHCommunicator
 from TSH.TSHObjects import Stage, Ruleset, State
 
+from OBS import OBSCommunicator
+
 from gamelogic import GameInstance
 
 from views import AcceptOrDenyDuelRequest
@@ -250,6 +252,11 @@ async def kill_match(interaction: discord.Interaction, match_id:int):
         return
     
     await interaction.response.send_message(content=f"There is no match with ID #{match_id}.", ephemeral=True)
+
+@bot.tree.command(name='reconnect_obs', description='Creates a new websocket connection with OBS (because python-obs sucks)')
+@app_commands.default_permissions(permissions=16) # Manage Channels
+async def reconnect_obs(interaction: discord.Interaction):
+    OBSCommunicator.reconnect_obs()
 
 bot.setup_hook = setup_hook
 bot.run(TOKEN)
