@@ -8,6 +8,8 @@ from random import randint
 import datetime
 import views
 
+import asyncio
+
 # This whole file is a complete disaster mess of spaghetti & poor planning. It works though! (for now)
 
 class GameInstance():
@@ -27,6 +29,8 @@ class GameInstance():
             self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
         else:
             self.ruleset = ruleset
+        
+        self.async_task:asyncio.Task
     
     async def _send_error_message(self):
         embed = discord.Embed(

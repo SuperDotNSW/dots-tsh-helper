@@ -98,26 +98,33 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
         await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
         return
 
-    gamestate = State(tsh_data=TSHCommunicator.fetch_data())
-    gamestate.p1.discord_user = p1
-    gamestate.p2.discord_user = p2
+    new_state = State(tsh_data=TSHCommunicator.fetch_data())
+    new_state.p1.discord_user = p1
+    new_state.p2.discord_user = p2
+    
+    if new_state.best_of % 2 != 1 or new_state.best_of < 1:
+        await interaction.response.send_message(content="`best_of` must be an odd number above 0.", ephemeral=True)
+        return
 
     TSHCommunicator.post_reset_stage_strike()
     TSHCommunicator.post_rps_win(randint(0,1))
 
-    embed:discord.Embed = discord.Embed(title=f"Stream Match ({gamestate.p1.display_name} vs {gamestate.p2.display_name})",\
-        description="Please strike stages in the thread on this message",\
+    embed:discord.Embed = discord.Embed(title=f"Stream Match ({new_state.p1.display_name} vs {new_state.p2.display_name})",\
+        description=f"( Best of {new_state.best_of} )\nPlease strike stages in the thread on this message",\
             colour=discord.Colour.red())
     
     await interaction.response.send_message(content="<@"+str(p1.id)+"> "+"<@"+str(p2.id)+">", embed=embed)
 
     message = await interaction.original_response()
-    thread:discord.Thread = await message.create_thread(name=f"Stream Match: {gamestate.p1.display_name} vs {gamestate.p2.display_name}", \
+    thread:discord.Thread = await message.create_thread(name=f"Stream Match: {new_state.p1.display_name} vs {new_state.p2.display_name}", \
         auto_archive_duration=1440, reason="Tournament Match")
     
-    active_instances[0] = GameInstance(0, thread=thread, state=gamestate)
+    active_instances[0] = GameInstance(0, thread=thread, state=new_state)
 
-    await active_instances[0].run_stream_match()
+    # Create async task
+    active_instances[0].async_task = asyncio.create_task(active_instances[0].run_stream_match())
+    # Await async task
+    await active_instances[0].async_task
 
     # Delete match after ending
     if active_instances.get(0) != None:
@@ -127,17 +134,18 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     # FIXME: this interaction has suddenly started failing for some reason??
     await message.edit(content="> Stream match has concluded.", embed=None)
 
-@bot.tree.command(name='kill_stream_match', description='Ends the currently running stream match')
+@bot.tree.command(name='kill_match', description='Ends the currently running match by ID')
+@app_commands.describe(match_ID="The match ID to terminate")
 @app_commands.default_permissions(permissions=16) # Manage Channels
-async def kill_stream_match(interaction: discord.Interaction):
-    if active_instances.get(0) != None:
-        # TODO: Figure out a way to kill an actively running instance instantly
-        active_instances[0].ID = -1
-        active_instances.pop(0)
-        await interaction.response.send_message(content="Removed ID 0 from stream instance & instances list.\nThe match instance will eventually error out and end on its own.", ephemeral=True)
+async def kill_match(interaction: discord.Interaction, match_ID:int):
+    if active_instances.get(match_ID) != None:
+        await active_instances[match_ID]._send_error_message()
+        active_instances[match_ID].async_task.cancel()
+        active_instances.pop(match_ID)
+        await interaction.response.send_message(content=f"Removed Match #{match_ID} from instances list.", ephemeral=True)
         return
     
-    await interaction.response.send_message(content="No stream match is currently running.", ephemeral=True)
+    await interaction.response.send_message(content=f"There is no match with ID #{match_ID}.", ephemeral=True)
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
@@ -212,8 +220,10 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
         
-        # Run match
-        await active_instances[instance_id].run_match()
+        # Create async task
+        active_instances[instance_id].async_task = asyncio.create_task(active_instances[instance_id].run_match())
+        # Await async task
+        await active_instances[instance_id].async_task
         # Delete match after ending
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")

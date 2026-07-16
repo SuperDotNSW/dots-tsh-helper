@@ -6,7 +6,12 @@ load_dotenv()
 # TODO: Convert this to .json file that can be reloaded during execution
 # im so lazy LOL
 
-# EDIT VALUES HERE TO CONFIGURE THE BOT
+
+#############################################
+### EDIT VALUES HERE TO CONFIGURE THE BOT ###
+#############################################
+
+# STANDARD SETTINGS
 _MAX_BEST_OF:int = 9
 _REQUEST_TIMEOUT:float = 120.0
 _DELETE_EXPIRED_REQUESTS:bool = False
