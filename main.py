@@ -256,7 +256,7 @@ async def kill_match(interaction: discord.Interaction, match_id:int):
 @bot.tree.command(name='reconnect_obs', description='Creates a new websocket connection with OBS (because python-obs sucks)')
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def reconnect_obs(interaction: discord.Interaction):
-    OBSCommunicator.reconnect_obs()
+    OBSCommunicator.initalize_obs()
     await interaction.response.send_message(content=f"Sent a new websocket connection request.", ephemeral=True)
 
 bot.setup_hook = setup_hook

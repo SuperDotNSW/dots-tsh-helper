@@ -367,6 +367,8 @@ class GameInstance():
     # This is extremeley hacky and will break instantly if any unknown POST requests or resets to the stage striking tool happen
     # Loooots of duplicated code
     async def run_stream_match(self):
+        OBSCommunicator.initalize_obs()
+
         # Update TSH state
         self.current_tsh_data = TSHCommunicator.fetch_data()
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
