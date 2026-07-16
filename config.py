@@ -1,8 +1,21 @@
+from dotenv import load_dotenv
+from os import getenv
+
+load_dotenv()
+
 # EDIT VALUES HERE TO CONFIGURE THE BOT
 _MAX_BEST_OF:int = 9
 _REQUEST_TIMEOUT:float = 120.0
 _DELETE_EXPIRED_REQUESTS:bool = False
 
+# OBS INFO
+_OBS_WEBSOCKET_PORT:int = 4444
+_OBS_WEBSOCKET_PASSWORD:str = getenv("OBS_PASS")
+
+# OBS SOURCE INFO
+_OBS_VERSUS_SCENE_NAME:str = "Versus"
+_OBS_VERSUS_SONG_SOURCE_NAME:str = "BGSong"
+_OBS_FINALE_SONG_SOURCE_NAME:str = "FinaleSong"
 
 # FUNCTION IMPLEMENTATIONS
 def get_max_best_of() -> int:
@@ -13,3 +26,14 @@ def get_match_request_timeout() -> float:
 
 def get_delete_expired_requests() -> bool:
     return _DELETE_EXPIRED_REQUESTS
+
+def get_obs_port() -> int:
+    return _OBS_WEBSOCKET_PORT
+def get_obs_password() -> str:
+    return _OBS_WEBSOCKET_PASSWORD
+def get_versus_scene_name() -> str:
+    return _OBS_VERSUS_SCENE_NAME
+def get_versus_song_name() -> str:
+    return _OBS_VERSUS_SONG_SOURCE_NAME
+def get_finale_song_name() -> str:
+    return _OBS_FINALE_SONG_SOURCE_NAME

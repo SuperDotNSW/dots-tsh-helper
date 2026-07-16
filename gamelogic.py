@@ -1,5 +1,6 @@
 from TSH.TSHObjects import Ruleset, State, Stage, Player
 from TSH import TSHCommunicator
+from OBS import OBSCommunicator
 import discord
 from discord import File
 from random import randint
@@ -463,6 +464,14 @@ class GameInstance():
                     # End Match~!
                     return
             
+            # Should we activate FinaleSong in OBS?
+            if self.state.currGame+1 == self.state.best_of:
+                print(f"OBS: Activating finale music! (Game {self.state.currGame+1}/{self.state.best_of}")
+                OBSCommunicator.set_finale_music(True)
+            else:
+                print(f"OBS: Disabling finale music. (Game {self.state.currGame+1}/{self.state.best_of}")
+                OBSCommunicator.set_finale_music(False)
+
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
             ### Do winner bans ###
@@ -549,7 +558,7 @@ class GameInstance():
             await self.banning_msgs[0].edit(embed=selected_stage_embed)
 
             self.banning_msgs = []
-
+            
             ### Repeat ###
 
         await self._send_error_message()
