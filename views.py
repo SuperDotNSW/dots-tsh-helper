@@ -308,7 +308,10 @@ class ConfirmHostEmbed(BaseEmbed):
     def __init__(self, instance_info:InstanceInfo, state:State):
         super().__init__(instance_info=instance_info)
         self.title = f"Setup Match"
-        self.description = f"Please decide on a host and connect to a lobby.\nOnce in the playground, click the 'Connected & Ready' button.\n\nClick the button again to unready."
+        self.description = f"MAKE SURE YOU HAVE CHECKED IN ON STARTGG\n\
+            Please decide on a host and connect to a lobby.\n\
+            Once in the playground, click the 'Connected & Ready' button.\n\n\
+                Click the button again to unready."
         self.colour = discord.Colour.blurple()
         self.add_field(
             name="Hosting Guide:",
