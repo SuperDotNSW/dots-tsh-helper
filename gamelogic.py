@@ -1,6 +1,7 @@
 from TSH.TSHObjects import Ruleset, State, Stage, Player
 from TSH import TSHCommunicator
 from OBS import OBSCommunicator
+import config
 import discord
 from discord import File
 from random import randint
@@ -336,6 +337,20 @@ class GameInstance():
         await self._send_error_message()
         return
 
+    
+    # Swap back to versus scene in OBS
+    def swap_to_versus_scene(force_versus_music:bool=False):
+        if config.get_obs_enabled():
+            if force_versus_music:
+                print(f"OBS: Set Finale music to False")
+                OBSCommunicator.set_finale_music(False)
+            else:
+                # Should we activate FinaleSong in OBS?
+                print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
+                OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
+            
+            OBSCommunicator.go_to_versus_scene()
+
     # Re-implementation of run_match() that communicates directly with TSH through POST requests
     # This is extremeley hacky and will break instantly if any unknown POST requests or resets to the stage striking tool happen
     # Loooots of duplicated code
@@ -360,6 +375,9 @@ class GameInstance():
                 await self._send_error_message()
                 return
         
+        # Players have confirmed a lobby, we can swap scenes in OBS now
+        self.swap_to_versus_scene()
+
         # Send RPS feedback
         embed:discord.Embed = views.BaseEmbed(self.instinf)
         embed.title = "RPS Winner"
@@ -425,6 +443,9 @@ class GameInstance():
         self.current_tsh_data = TSHCommunicator.fetch_data()
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
+        # Swap back to versus scene in OBS
+        self.swap_to_versus_scene()
+
         # We are now assuming it is game 2
 
         # Update Embed
@@ -440,6 +461,7 @@ class GameInstance():
             print(f"MATCH #{self.ID}: {winner.display_name} Has won the set!")
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
             # End Match~!
+            self.swap_to_versus_scene(force_versus_music=True)
             return
 
         # Loop through rounds until winner
@@ -462,15 +484,11 @@ class GameInstance():
                     # Player has won
                     print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
                     # End Match~!
+                    self.swap_to_versus_scene(force_versus_music=True)
                     return
             
-            # Should we activate FinaleSong in OBS?
-            if self.state.currGame+1 == self.state.best_of:
-                print(f"OBS: Activating finale music! (Game {self.state.currGame+1}/{self.state.best_of}")
-                OBSCommunicator.set_finale_music(True)
-            else:
-                print(f"OBS: Disabling finale music. (Game {self.state.currGame+1}/{self.state.best_of}")
-                OBSCommunicator.set_finale_music(False)
+            # Swap back to versus scene in OBS
+            self.swap_to_versus_scene()
 
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
