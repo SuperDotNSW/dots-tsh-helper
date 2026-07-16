@@ -13,4 +13,4 @@ My first attempt at making a discord bot! This repository attempts to integrate 
 - discord.py         2.7.1    (Discord API)
 - requests           2.34.2   (Communicates with webapps)
 - python-dotenv      1.2.2    (Used to store bot token privately)
-- python-obs         1.3.0    (Used to update OBS overlay at game 5)
+- python-obs         1.3.0    (Used to integrate with OBS websockets)
