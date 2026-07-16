@@ -162,21 +162,19 @@ class GameInstance():
 
     # Instance gets terminated when this function ends
     async def run_match(self):
+        
         # Do player setup
+        confirm_host_view = views.ConfirmHostView([player.discord_user for player in self.state.players])
+        await self.thread.send(
+            embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
+            view=confirm_host_view
+        )
 
-        # I think this will garbage collect the variables when it leaves this scope??
-        if True:
-            view = views.ConfirmHostView([player.discord_user for player in self.state.players])
-            await self.thread.send(
-                embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
-                view=view
-            )
+        await confirm_host_view.wait()
 
-            await view.wait()
-
-            if view.value != True:
-                await self._send_error_message()
-                return
+        if confirm_host_view.value != True:
+            await self._send_error_message()
+            return
 
         # Do RPS for first ban
         self.state.currPlayer = self.state.players[randint(0, 1)]
@@ -337,20 +335,6 @@ class GameInstance():
         await self._send_error_message()
         return
 
-    
-    # Swap back to versus scene in OBS
-    def swap_to_versus_scene(force_versus_music:bool=False):
-        if config.get_obs_enabled():
-            if force_versus_music:
-                print(f"OBS: Set Finale music to False")
-                OBSCommunicator.set_finale_music(False)
-            else:
-                # Should we activate FinaleSong in OBS?
-                print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
-                OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
-            
-            OBSCommunicator.go_to_versus_scene()
-
     # Re-implementation of run_match() that communicates directly with TSH through POST requests
     # This is extremeley hacky and will break instantly if any unknown POST requests or resets to the stage striking tool happen
     # Loooots of duplicated code
@@ -360,23 +344,20 @@ class GameInstance():
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
         # Do player setup
+        confirm_host_view = views.ConfirmHostView([player.discord_user for player in self.state.players])
+        await self.thread.send(
+            embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
+            view=confirm_host_view
+        )
 
-        # I think this will garbage collect the variables when it leaves this scope??
-        if True:
-            view = views.ConfirmHostView([player.discord_user for player in self.state.players])
-            await self.thread.send(
-                embed=views.ConfirmHostEmbed(instance_info=self.instinf, state=self.state),
-                view=view
-            )
+        await confirm_host_view.wait()
 
-            await view.wait()
-
-            if view.value != True:
-                await self._send_error_message()
-                return
+        if confirm_host_view.value != True:
+            await self._send_error_message()
+            return
         
         # Players have confirmed a lobby, we can swap scenes in OBS now
-        self.swap_to_versus_scene()
+        swap_to_versus_scene()
 
         # Send RPS feedback
         embed:discord.Embed = views.BaseEmbed(self.instinf)
@@ -444,7 +425,7 @@ class GameInstance():
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
         # Swap back to versus scene in OBS
-        self.swap_to_versus_scene()
+        swap_to_versus_scene()
 
         # We are now assuming it is game 2
 
@@ -461,7 +442,7 @@ class GameInstance():
             print(f"MATCH #{self.ID}: {winner.display_name} Has won the set!")
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
             # End Match~!
-            self.swap_to_versus_scene(force_versus_music=True)
+            swap_to_versus_scene(force_versus_music=True)
             return
 
         # Loop through rounds until winner
@@ -484,11 +465,11 @@ class GameInstance():
                     # Player has won
                     print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
                     # End Match~!
-                    self.swap_to_versus_scene(force_versus_music=True)
+                    swap_to_versus_scene(force_versus_music=True)
                     return
             
             # Swap back to versus scene in OBS
-            self.swap_to_versus_scene()
+            swap_to_versus_scene()
 
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
@@ -582,6 +563,18 @@ class GameInstance():
         await self._send_error_message()
         return
 
+
+def swap_to_versus_scene(force_versus_music:bool=False):
+    if config.get_obs_enabled():
+        if force_versus_music:
+            print(f"OBS: Set Finale music to False")
+            OBSCommunicator.set_finale_music(False)
+        else:
+            # Should we activate FinaleSong in OBS?
+            print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
+            OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
+        
+        OBSCommunicator.go_to_versus_scene()
 
 class FileEmbedContainer:
     def __init__(self):
