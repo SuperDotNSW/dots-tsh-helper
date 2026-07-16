@@ -90,9 +90,9 @@ def get_unique_instance_id() -> int:
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
-    if p1 == p2:
-        await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
-        return
+    # if p1 == p2:
+    #     await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
+    #     return
     
     if active_instances.get(0) != None:
         await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
@@ -130,13 +130,13 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     
     active_instances[0] = GameInstance(0, thread=thread, state=new_state)
 
-    # Create async task
+    # Create run_stream_match task
     active_instances[0].async_task = asyncio.create_task(active_instances[0].run_stream_match())
     # Wait for task to be done
     while not active_instances[0].async_task.done():
-        # just check in 0.1s intervals I GUESS IDKKK
-        await asyncio.sleep(0.1)
-
+        # just check in 1s intervals I GUESS IDKKK
+        await asyncio.sleep(1)
+    
     # Delete match after ending
     if active_instances.get(0) != None:
         active_instances.pop(0)    
@@ -218,12 +218,13 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         await interaction.edit_original_response(content="**Match has now begun. Please strike stages in the newly created thread**", embed=None, view=None)
         await interaction.followup.send(content=f"-# <@{interaction.user.id}><@{opponent.id}>")
         
-        # Create async task
+        # Create run_match task
         active_instances[instance_id].async_task = asyncio.create_task(active_instances[instance_id].run_match())
         # Wait for task to be done
         while not active_instances[instance_id].async_task.done():
-            # just check in 0.1s intervals I GUESS IDKKK
-            await asyncio.sleep(0.1)
+            # just check in 1s intervals I GUESS IDKKK
+            await asyncio.sleep(1)
+        
         # Delete match after ending
         active_instances.pop(instance_id)
         print(f"Killed match instance #{instance_id}")

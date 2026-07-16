@@ -56,6 +56,18 @@ class GameInstance():
 
     def is_stream_match(self) -> bool:
         return self.ID == 0
+    
+    def swap_to_versus_scene(self, force_versus_music:bool=False):
+        if config.get_obs_enabled():
+            if force_versus_music:
+                print(f"OBS: Set Finale music to False")
+                OBSCommunicator.set_finale_music(False)
+            else:
+                # Should we activate FinaleSong in OBS?
+                print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
+                OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
+            
+            OBSCommunicator.go_to_versus_scene()
 
     #region Helper Functions
 
@@ -373,7 +385,7 @@ class GameInstance():
             return
         
         # Players have confirmed a lobby, we can swap scenes in OBS now
-        swap_to_versus_scene()
+        self.swap_to_versus_scene()
 
         # Send RPS feedback
         embed:discord.Embed = views.BaseEmbed(self.instinf)
@@ -431,7 +443,7 @@ class GameInstance():
         self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
         # Swap back to versus scene in OBS
-        swap_to_versus_scene()
+        self.swap_to_versus_scene()
 
         # We are now assuming it is game 2
 
@@ -448,7 +460,7 @@ class GameInstance():
             print(f"MATCH #{self.ID}: {winner.display_name} Has won the set!")
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
             # End Match~!
-            swap_to_versus_scene(force_versus_music=True)
+            self.swap_to_versus_scene(force_versus_music=True)
             return
 
         # Loop through rounds until winner
@@ -466,11 +478,11 @@ class GameInstance():
                     # Player has won
                     print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
                     # End Match~!
-                    swap_to_versus_scene(force_versus_music=True)
+                    self.swap_to_versus_scene(force_versus_music=True)
                     return
             
             # Swap back to versus scene in OBS
-            swap_to_versus_scene()
+            self.swap_to_versus_scene()
 
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
@@ -549,18 +561,6 @@ class GameInstance():
         await self._send_error_message()
         return
 
-
-def swap_to_versus_scene(force_versus_music:bool=False):
-    if config.get_obs_enabled():
-        if force_versus_music:
-            print(f"OBS: Set Finale music to False")
-            OBSCommunicator.set_finale_music(False)
-        else:
-            # Should we activate FinaleSong in OBS?
-            print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
-            OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
-        
-        OBSCommunicator.go_to_versus_scene()
 
 class FileEmbedContainer:
     def __init__(self):
