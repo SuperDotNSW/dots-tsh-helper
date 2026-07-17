@@ -51,6 +51,8 @@ class Ruleset():
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
         if self.banByMaxGames != {}:
+            print("WARNING: banByMaxGames is broken in the TSH webapp! Please use banCount for streamed matches!")
+            
             if self.banByMaxGames.get(best_of):
                 self.banCount = self.banByMaxGames[best_of]
             else:
