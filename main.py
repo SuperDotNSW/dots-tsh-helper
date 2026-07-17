@@ -92,9 +92,9 @@ def get_unique_instance_id() -> int:
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
-    # if p1 == p2:
-    #     await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
-    #     return
+    if p1 == p2:
+        await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
+        return
     
     if active_instances.get(0) != None:
         await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
@@ -113,6 +113,13 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     if new_state.best_of % 2 != 1 or new_state.best_of < 1:
         await interaction.response.send_message(content="TSH Error: `best_of` must be an odd number above 0.", ephemeral=True)
         return
+    
+    for instance in active_instances:
+        instance = active_instances[instance]
+        for player in instance.state.players:
+            if player.discord_user == p1 or player.discord_user == p2:
+                await interaction.response.send_message(content=f"{player.discord_user.mention} is already in match #{instance.ID}.")
+                return
     
     new_state.p1.discord_user = p1
     new_state.p2.discord_user = p2
