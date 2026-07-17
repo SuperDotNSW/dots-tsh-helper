@@ -12,7 +12,12 @@ versus_scene:Scene
 game_scene:Scene
 versus_song_source:Source
 finale_song_source:Source
+results_song_source:Source
 striking_source:Source
+
+SONG_VERSUS=0
+SONG_FINALE=1
+SONG_RESULTS=2
 
 async def initalize_obs():
     global obs, versus_scene, game_scene, versus_song_source, finale_song_source, striking_source
@@ -24,10 +29,10 @@ async def initalize_obs():
     game_scene = obs.scene(config.get_game_scene_name())
     versus_song_source = versus_scene.source(config.get_versus_song_name())
     finale_song_source = versus_scene.source(config.get_finale_song_name())
+    results_song_source = versus_scene.source(config.get_results_song_name())
     striking_source = versus_scene.source(config.get_striking_name())
 
 async def revive_connection():
-    global obs
     if not obs._client.ws:
         print("Connection Lost with OBS, attempting reconnection now.")
         await initalize_obs()
@@ -37,20 +42,27 @@ async def revive_connection():
         print("Connection Lost with OBS, attempting reconnection now.")
         await initalize_obs()
 
-async def set_finale_music(enabled:bool=False):
-    global versus_song_source, finale_song_source
+async def set_music(song_id:int=0):
     if not config.get_obs_enabled(): return
     await revive_connection()
 
-    if enabled:
-        await versus_song_source.hide()
-        await finale_song_source.show()
-    else:
+    if song_id == SONG_VERSUS:
         await versus_song_source.show()
         await finale_song_source.hide()
+        await results_song_source.hide()
+        return
+    elif song_id == SONG_FINALE:
+        await versus_song_source.hide()
+        await finale_song_source.show()
+        await results_song_source.hide()
+        return
+    elif song_id == SONG_RESULTS:
+        await versus_song_source.hide()
+        await finale_song_source.hide()
+        await results_song_source.show()
+        return
 
 async def set_striking_visibility(visible:bool):
-    global striking_source
     if not config.get_obs_enabled(): return
     await revive_connection()
 
@@ -60,13 +72,11 @@ async def set_striking_visibility(visible:bool):
         await striking_source.hide()
 
 async def go_to_versus_scene():
-    global obs
     if not config.get_obs_enabled(): return
     await revive_connection()
 
     await obs.set_scene(config.get_versus_scene_name())
 async def go_to_game_scene():
-    global obs
     if not config.get_obs_enabled(): return
     await revive_connection()
 

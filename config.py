@@ -26,6 +26,7 @@ _OBS_VERSUS_SCENE_NAME:str = "Versus"
 _OBS_GAME_SCENE_NAME:str = "Game"
 _OBS_VERSUS_SONG_SOURCE_NAME:str = "VersusSong"
 _OBS_FINALE_SONG_SOURCE_NAME:str = "FinaleSong"
+_OBS_RESULTS_SONG_SOURCE_NAME:str = "ResultsSong"
 _OBS_STRIKING_SOURCE_NAME:str = "striking.html"
 
 # FUNCTION IMPLEMENTATIONS
@@ -52,5 +53,7 @@ def get_versus_song_name() -> str:
     return _OBS_VERSUS_SONG_SOURCE_NAME
 def get_finale_song_name() -> str:
     return _OBS_FINALE_SONG_SOURCE_NAME
+def get_results_song_name() -> str:
+    return _OBS_RESULTS_SONG_SOURCE_NAME
 def get_striking_name() -> str:
     return _OBS_STRIKING_SOURCE_NAME

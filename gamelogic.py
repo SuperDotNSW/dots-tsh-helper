@@ -58,15 +58,19 @@ class GameInstance():
     def is_stream_match(self) -> bool:
         return self.ID == 0
     
-    async def swap_to_versus_scene(self, force_versus_music:bool=False):
+    async def swap_to_versus_scene(self, force_results_music:bool=False):
         if config.get_obs_enabled():
-            if force_versus_music:
-                print(f"OBS: Set Finale music to False")
-                await OBSCommunicator.set_finale_music(False)
+            if force_results_music:
+                print(f"OBS: Set music to Results")
+                await OBSCommunicator.set_music(OBSCommunicator.SONG_RESULTS)
             else:
                 # Should we activate FinaleSong in OBS?
-                print(f"OBS: Set Finale music to {self.state.currGame+1 == self.state.best_of}")
-                await OBSCommunicator.set_finale_music(self.state.currGame+1 == self.state.best_of)
+                if self.state.currGame+1 == self.state.best_of:
+                    print(f"OBS: Set music to Finale")
+                    await OBSCommunicator.set_music(OBSCommunicator.SONG_FINALE)
+                else:
+                    print(f"OBS: Set music to Versus")
+                    await OBSCommunicator.set_music(OBSCommunicator.SONG_VERSUS)
             
             await OBSCommunicator.go_to_versus_scene()
 
@@ -464,7 +468,7 @@ class GameInstance():
             await self.thread.send(embed=views.GameCountEmbed(self.instinf, self.state))
             # End Match~!
             await OBSCommunicator.set_striking_visibility(False)
-            await self.swap_to_versus_scene(force_versus_music=True)
+            await self.swap_to_versus_scene(force_results_music=True)
             return
 
         # Loop through rounds until winner
@@ -483,7 +487,7 @@ class GameInstance():
                     print(f"MATCH #{self.ID}: {player.display_name} Has won the set!")
                     # End Match~!
                     await OBSCommunicator.set_striking_visibility(False)
-                    await self.swap_to_versus_scene(force_versus_music=True)
+                    await self.swap_to_versus_scene(force_results_music=True)
                     return
             
             # Swap back to versus scene in OBS
