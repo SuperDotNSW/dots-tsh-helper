@@ -139,52 +139,53 @@ class State():
             self.update_from_tsh_data(tsh_data)
     
     def update_from_tsh_data(self, data:dict, ruleset:Ruleset=None):
-        d = data['state']
-        self.canRedo = d['canRedo']
-        self.canUndo = d['canUndo']
-        self.currGame = d['currGame']
-        self.currPlayer:Player = self.players[d['currPlayer']]
-        self.currStep = d['currStep']
-        self.gentlemans = d['gentlemans']
-        self.lastWinner = self.players[d['lastWinner']]
-        
         self.p1.display_name = data['p1']
         self.p2.display_name = data['p2']
 
-        # Only retrieve stage information if a ruleset is provided
-        if ruleset:
-            self.selectedStage = ruleset.find_stage_by_codename(d['selectedStage'])
-            self.stagesPicked = []
-            for codename in d['stagesPicked']:
-                self.stagesPicked.append(ruleset.find_stage_by_codename(codename))
-            
-            # Reset stagesWon
-            self.stagesWon = {
-                self.p1 : [],
-                self.p2 : []
-            }
-            # Retrieve from TSH
-            for p in range(len(d['stagesWon'])):
-                for codename in d['stagesWon'][p]:
-                    self.stagesWon[self.players[p]].append(ruleset.find_stage_by_codename(codename))
-            
-            # Reset strikedBy
-            self.strikedBy = {
-                self.p1 : [],
-                self.p2 : []
-            }
-            # Retrieve from TSH
-            for p in range(len(d['strikedBy'])):
-                for codename in d['strikedBy'][p]:
-                    self.strikedBy[self.players[p]].append(ruleset.find_stage_by_codename(codename))
-            
-            # Reset strikedStages
-            self.strikedStages = [[]]
-            # Retrieve from TSH
-            for step in range(len(d['strikedStages'])):
-                self.strikedStages.append([])
-                for codename in d['strikedStages'][step]:
-                    self.strikedStages[step].append(ruleset.find_stage_by_codename(codename))
+        d = data['state']
+        if d != {}:
+            self.canRedo = d['canRedo']
+            self.canUndo = d['canUndo']
+            self.currGame = d['currGame']
+            self.currPlayer:Player = self.players[d['currPlayer']]
+            self.currStep = d['currStep']
+            self.gentlemans = d['gentlemans']
+            self.lastWinner = self.players[d['lastWinner']]
+        
+            # Only retrieve stage information if a ruleset is provided
+            if ruleset:
+                self.selectedStage = ruleset.find_stage_by_codename(d['selectedStage'])
+                self.stagesPicked = []
+                for codename in d['stagesPicked']:
+                    self.stagesPicked.append(ruleset.find_stage_by_codename(codename))
+                
+                # Reset stagesWon
+                self.stagesWon = {
+                    self.p1 : [],
+                    self.p2 : []
+                }
+                # Retrieve from TSH
+                for p in range(len(d['stagesWon'])):
+                    for codename in d['stagesWon'][p]:
+                        self.stagesWon[self.players[p]].append(ruleset.find_stage_by_codename(codename))
+                
+                # Reset strikedBy
+                self.strikedBy = {
+                    self.p1 : [],
+                    self.p2 : []
+                }
+                # Retrieve from TSH
+                for p in range(len(d['strikedBy'])):
+                    for codename in d['strikedBy'][p]:
+                        self.strikedBy[self.players[p]].append(ruleset.find_stage_by_codename(codename))
+                
+                # Reset strikedStages
+                self.strikedStages = [[]]
+                # Retrieve from TSH
+                for step in range(len(d['strikedStages'])):
+                    self.strikedStages.append([])
+                    for codename in d['strikedStages'][step]:
+                        self.strikedStages[step].append(ruleset.find_stage_by_codename(codename))
     
     def get_games_to_win(self) -> int:
         return ceil(float(self.best_of) / 2.0)

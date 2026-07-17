@@ -1,9 +1,12 @@
-from python_obs.clients import OBS
+from python_obs.clients import OBSAsync
 from python_obs.scene import Scene
 from python_obs.source import Source
 import config
+import websockets
 
-obs:OBS = OBS(port=config.get_obs_port(), password=config.get_obs_password())
+# I should've just made this a class but whatever
+
+obs:OBSAsync = OBSAsync(port=config.get_obs_port(), password=config.get_obs_password())
 
 versus_scene:Scene
 game_scene:Scene
@@ -11,38 +14,61 @@ versus_song_source:Source
 finale_song_source:Source
 striking_source:Source
 
-def set_finale_music(enabled:bool=False):
-    global versus_song_source, finale_song_source
+async def initalize_obs():
+    global obs, versus_scene, game_scene, versus_song_source, finale_song_source, striking_source
     if not config.get_obs_enabled(): return
-    if enabled:
-        versus_song_source.hide()
-        finale_song_source.show()
-    else:
-        versus_song_source.show()
-        finale_song_source.hide()
 
-def set_striking_visibility(visible:bool):
-    global striking_source
-    if not config.get_obs_enabled(): return
-    if visible:
-        striking_source.show()
-    else:
-        striking_source.hide()
-
-def go_to_versus_scene():
-    if not config.get_obs_enabled(): return
-    obs.set_scene(config.get_versus_scene_name())
-def go_to_game_scene():
-    if not config.get_obs_enabled(): return
-    obs.set_scene(config.get_game_scene_name())
-
-def initalize_obs():
-    global versus_scene, game_scene, versus_song_source, finale_song_source, striking_source
-    if not config.get_obs_enabled(): return
-    obs.connect()
+    await obs.connect()
     
     versus_scene = obs.scene(config.get_versus_scene_name())
     game_scene = obs.scene(config.get_game_scene_name())
     versus_song_source = versus_scene.source(config.get_versus_song_name())
     finale_song_source = versus_scene.source(config.get_finale_song_name())
     striking_source = versus_scene.source(config.get_striking_name())
+
+async def revive_connection():
+    global obs
+    if not obs._client.ws:
+        print("Connection Lost with OBS, attempting reconnection now.")
+        await initalize_obs()
+        return
+    if obs._client.ws.state != 1:
+        print(obs._client.ws.state)
+        print("Connection Lost with OBS, attempting reconnection now.")
+        await initalize_obs()
+
+async def set_finale_music(enabled:bool=False):
+    global versus_song_source, finale_song_source
+    if not config.get_obs_enabled(): return
+    await revive_connection()
+
+    if enabled:
+        await versus_song_source.hide()
+        await finale_song_source.show()
+    else:
+        await versus_song_source.show()
+        await finale_song_source.hide()
+
+async def set_striking_visibility(visible:bool):
+    global striking_source
+    if not config.get_obs_enabled(): return
+    await revive_connection()
+
+    if visible:
+        await striking_source.show()
+    else:
+        await striking_source.hide()
+
+async def go_to_versus_scene():
+    global obs
+    if not config.get_obs_enabled(): return
+    await revive_connection()
+
+    await obs.set_scene(config.get_versus_scene_name())
+async def go_to_game_scene():
+    global obs
+    if not config.get_obs_enabled(): return
+    await revive_connection()
+
+    await obs.set_scene(config.get_game_scene_name())
+

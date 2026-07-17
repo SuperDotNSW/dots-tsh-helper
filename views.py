@@ -53,7 +53,9 @@ class StageInputBase(ui.View):
     @ui.select()
     async def selector(self, interaction:discord.Interaction, select:ui.Select[StageBanningInput]):
         self.values = select.values
-        await interaction.response.edit_message(view=None)
+        select.disabled = True
+        select.placeholder = f"Thinking..."
+        await interaction.response.edit_message(view=self)
         self.stop()
     
     async def interaction_check(self, interaction:discord.Interaction) -> bool:
