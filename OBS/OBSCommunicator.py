@@ -20,7 +20,7 @@ SONG_FINALE=1
 SONG_RESULTS=2
 
 async def initalize_obs():
-    global obs, versus_scene, game_scene, versus_song_source, finale_song_source, striking_source
+    global obs, versus_scene, game_scene, versus_song_source, finale_song_source, striking_source, results_song_source
     if not config.get_obs_enabled(): return
 
     await obs.connect()
