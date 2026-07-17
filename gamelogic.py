@@ -26,7 +26,7 @@ class GameInstance():
 
         if ruleset == None:
             # Fetch directly from TSH if no ruleset is provided
-            self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data())
+            self.ruleset = Ruleset(tsh_data=TSHCommunicator.fetch_data(), best_of=state.best_of)
         else:
             self.ruleset = ruleset
         

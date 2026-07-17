@@ -28,7 +28,7 @@ class Ruleset():
     This object should rarely be modified
     """
 
-    def __init__(self, tsh_data:Optional[dict]=None):
+    def __init__(self, tsh_data:Optional[dict]=None, best_of:Optional[int]=3):
         self.banByMaxGames:dict = {}
         self.banCount:int = 3
         self.counterpickStages:list[Stage] = []
@@ -45,12 +45,20 @@ class Ruleset():
         self.videogame:str = ""
 
         if tsh_data is not None:
-            self.update_from_tsh_data(tsh_data)
+            self.update_from_tsh_data(tsh_data, best_of)
 
-    def update_from_tsh_data(self, data:dict):
+    def update_from_tsh_data(self, data:dict, best_of:int=3):
         d = data['ruleset']
         self.banByMaxGames = d['banByMaxGames']
-        self.banCount = d['banCount']
+        if self.banByMaxGames != {}:
+            if self.banByMaxGames.get(best_of):
+                self.banCount = self.banByMaxGames[best_of]
+            else:
+                print(f"ERROR: There is no ban count defined for best of {best_of}.\nUsing fallback value of 3")
+                self.banCount = 3
+        else:
+            self.banCount = d['banCount']
+        
         self.errors = d['errors']
         self.name = d['name']
         self.strikeOrder = d['strikeOrder']
