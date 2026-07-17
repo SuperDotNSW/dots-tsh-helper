@@ -5,6 +5,7 @@ My first attempt at making a discord bot! This repository attempts to integrate 
 - Allow for multiple stage pools that players can vote on when starting their set
 - Support 'banByMaxGames' in TSH
 - Allow for pulling ruleset(s) from .json files independent of TSH
+- Figure out how to auto-reconnect with OBS when the websocket connection drops/times out
 
 ## Dependencies:
 - colorama           0.4.6    (Coloured messages in terminal)
