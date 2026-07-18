@@ -75,18 +75,14 @@ def is_id_taken(_id:int) -> bool:
             return True
     return False
 def get_unique_instance_id() -> int:
-    uniqueID:int = randint(1, 256)
-    if len(active_instances) > 0:
-        if len(active_instances) >= 256:
-            print("ERROR: Couldnt find a unique instance id!")
-            return None
-        if is_id_taken(uniqueID):
-            uniqueID = get_unique_instance_id((uniqueID+1) % 256)
-            print(f"Found unique ID: #{uniqueID}")
-            return uniqueID
-        return None
-    else:
-        return uniqueID
+    def _iterate_id(_id:int) -> int:
+        if is_id_taken(_id):
+            _id = _iterate_id(_id+1)
+        else:
+            print(f"Found unique ID: #{_id}")
+        return _id
+    
+    return _iterate_id(1)
 
 @bot.tree.command(name='stream_match', description='Begins the stage striking process in the current channel')
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
