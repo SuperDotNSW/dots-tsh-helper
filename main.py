@@ -148,6 +148,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
     print(f"Killed match instance #{0} (Stream match)")
     
     # FIXME: this interaction has suddenly started failing for some reason??
+    message = await interaction.original_response()
     await message.edit(content="> Stream match has concluded.", embed=None)
 
 @bot.tree.command(name='start_match', description='Begins the stage striking process in the current channel')
@@ -235,6 +236,7 @@ async def start_match(interaction: discord.Interaction, opponent:discord.User, b
         print(f"Killed match instance #{instance_id}")
 
         # FIXME: this interaction has suddenly started failing for some reason??
+        message = await interaction.original_response()
         await message.edit(content="> Match has concluded.")
     elif view.value == False:
         await interaction.delete_original_response()
