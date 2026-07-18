@@ -88,9 +88,9 @@ def get_unique_instance_id() -> int:
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
-    # if p1 == p2:
-    #     await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
-    #     return
+    if p1 == p2:
+        await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
+        return
     
     if active_instances.get(0) != None:
         await interaction.response.send_message(content="There is already a stream match instance running.", ephemeral=True)
@@ -157,9 +157,9 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
 @app_commands.describe(opponent="Discord User of the player you are dueling", best_of="The maximum amount of rounds possible in the set (Must be an odd number)")
 async def start_match(interaction: discord.Interaction, opponent:discord.User, best_of:int):
     # User error checks
-    # if opponent == interaction.user:
-    #     await interaction.response.send_message(content="You cannot start a match against yourself.", ephemeral=True)
-    #     return
+    if opponent == interaction.user:
+        await interaction.response.send_message(content="You cannot start a match against yourself.", ephemeral=True)
+        return
 
     for user in outgoing_requests:
         if user == interaction.user:
