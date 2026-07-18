@@ -176,14 +176,14 @@ class GameInstance():
     async def create_report_winner_view(self, selected_stage_embed:views.SelectedStageEmbed) -> Player:
         # Display selected stage in original message and add winner report view
         report_winner_view:views.ReportWinnerInput = views.ReportWinnerInput(instance_info=self.instinf)
+        # Delete all banning messages
         for i in range(len(self.banning_msgs)):
-            if i == 0:
-                # Replace first message in list with winner report
-                await self.banning_msgs[i].edit(embed=selected_stage_embed, attachments=[selected_stage_embed.file], view=report_winner_view)
-            else:
-                # Delete all subsequent messages
-                await self.banning_msgs[i].delete()
+            await self.banning_msgs[i].delete()
+            self.banning_msgs = []
         
+        # Send new message to report winner
+        self.banning_msgs.append(await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file, view=report_winner_view))
+
         # Wait for players to decide on winner
         await report_winner_view.wait()
 
@@ -263,10 +263,15 @@ class GameInstance():
         self.state.stagesPicked.append(chosen_stage)
         
         # Update Embed
+        # Recreate the embed cause the file expired for some reason??
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
         selected_stage_embed.clear_fields()
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
-        await self.banning_msgs[0].edit(embed=selected_stage_embed)
+        # Send game won message
+        await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
+        # Delete report message
+        await self.banning_msgs[0].delete()
 
         self.banning_msgs = []
 
@@ -355,10 +360,15 @@ class GameInstance():
             self.state.stagesWon[winner].append(chosen_stage)
 
             # Update Embed
+            # Recreate the embed cause the file expired for some reason??
+            selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
             selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
             selected_stage_embed.clear_fields()
             selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
-            await self.banning_msgs[0].edit(embed=selected_stage_embed)
+            # Send game won message
+            await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
+            # Delete report message
+            await self.banning_msgs[0].delete()
 
             self.banning_msgs = []
 
@@ -454,10 +464,15 @@ class GameInstance():
         # We are now assuming it is game 2
 
         # Update Embed
+        # Recreate the embed cause the file expired for some reason??
+        selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
         selected_stage_embed.clear_fields()
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
-        await self.banning_msgs[0].edit(embed=selected_stage_embed)
+        # Send game won message
+        await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
+        # Delete report message
+        await self.banning_msgs[0].delete()
 
         self.banning_msgs = []
 
@@ -559,10 +574,15 @@ class GameInstance():
             self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
             # Update Embed
+            # Recreate the embed cause the file expired for some reason??
+            selected_stage_embed:views.SelectedStageEmbed = views.SelectedStageEmbed(instance_info=self.instinf, stage=chosen_stage)
             selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
             selected_stage_embed.clear_fields()
             selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
-            await self.banning_msgs[0].edit(embed=selected_stage_embed)
+            # Send game won message
+            await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
+            # Delete report message
+            await self.banning_msgs[0].delete()
 
             self.banning_msgs = []
             

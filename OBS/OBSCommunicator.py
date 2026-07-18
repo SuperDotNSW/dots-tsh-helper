@@ -34,7 +34,7 @@ async def initalize_obs():
 
 async def revive_connection():
     if not obs._client.ws:
-        print("Connection Lost with OBS, attempting reconnection now.")
+        print("Attempting to connect to OBS...")
         await initalize_obs()
         return
     if obs._client.ws.state != 1:

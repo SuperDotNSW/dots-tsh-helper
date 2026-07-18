@@ -105,7 +105,8 @@ class ReportWinnerInput(ui.View):
         # If stream manager requested it, instantly accept
         if interaction.user == self.instance_info.instance_manager:
             # Accepted
-            await self.confirm_message.delete()
+            if self.confirm_message:
+                await self.confirm_message.delete()
             await original_msg.edit(view=None)
             self.stop()
         else:
@@ -187,7 +188,7 @@ class ConfirmWinner(ui.View):
             self.stop()
     
     def update_button_label(self):
-        users_str:str
+        users_str:str = ""
         for user in self.target_users:
             users_str = users_str + user.display_name + ", "
         users_str = users_str.removesuffix(", ")
@@ -335,7 +336,7 @@ class ConfirmHostEmbed(BaseEmbed):
     def __init__(self, instance_info:InstanceInfo, state:State):
         super().__init__(instance_info=instance_info)
         self.title = f"Setup Match"
-        self.description = f"MAKE SURE YOU HAVE CHECKED IN ON STARTGG\n\
+        self.description = f"**MAKE SURE YOU HAVE CHECKED IN ON STARTGG**\n\n\
             Please decide on a host and connect to a lobby.\n\
             Once in the playground, click the 'Connected & Ready' button.\n\n\
                 Click the button again to unready."
