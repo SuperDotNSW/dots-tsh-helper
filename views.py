@@ -11,6 +11,7 @@ class InstanceInfo():
     def __init__(self, ID:int, state:State):
         self.ID:int = ID
         self.state:State = state
+        self.instance_manager:discord.User = None
 
 ##### VIEWS #####
 class AcceptOrDenyDuelRequest(ui.View):
@@ -101,62 +102,72 @@ class ReportWinnerInput(ui.View):
         original_msg:discord.InteractionMessage = await interaction.original_response()
         await original_msg.edit(view=self)
 
-        # Create confirm or deny view
-        # Get player(s) who didn't make this report.
-        target_users = [u.discord_user for u in self.state.players if u.discord_user != interaction.user]
-        # Get the reported winner
-        reported_winner = self.state.players[self.value]
-        # Create the view
-        confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users)
-        # Create the embed
-        confirm_embed:BaseEmbed = BaseEmbed(instance_info=self.instance_info)
-        confirm_embed.colour = discord.Colour.dark_green()
-        confirm_embed.title = "Reported Winner:"
-        confirm_embed.description = f"{interaction.user.mention} reported {reported_winner.discord_user.mention} won."
-        confirm_embed.set_thumbnail(url=reported_winner.discord_user.avatar.url)
-
-        self.confirm_message = await interaction.followup.send(embed=confirm_embed, view=confirm_view)
-
-        await confirm_view.wait()
-
-        if confirm_view.value == None:
-            # Timeout
-            # Re-enable select & delete reported score
-            await self.confirm_message.delete()
-            select.disabled = False
-            self.value = None
-            await original_msg.edit(view=self)
-            await original_msg.reply(content="> Timed out: Please report a new winner.", delete_after=10.0)
-        elif confirm_view.value == False:
-            # Denied
-            # Dont delete denied score reports, as it makes it easier to tell what's happening to a moderator/TO when handling disputes
-            embed:discord.Embed = BaseEmbed(instance_info=self.instance_info)
-            embed.colour = discord.Colour.red()
-            embed.set_author(name=confirm_view.disputed_user.global_name, icon_url=confirm_view.disputed_user.display_avatar.url)
-            embed.title = f"Score Disputed"
-            embed.description = f"The reported winner was disputed."
-            embed.add_field(name="Reported Winner:", value=f"<@{self.state.players[self.value].discord_user.id}>")
-            embed.add_field(name="Reported by:", value=f"<@{interaction.user.id}>")
-            embed.add_field(name="\u200b", value="If an agreement cannot be reached, please contact a Tournament Organiser", inline=False)
-
-            await self.confirm_message.edit(embed=embed, view=None)
-            self.confirm_message = None
-
-            self.value = None
-            select.disabled = False
-            await original_msg.edit(view=self)
-            await original_msg.reply(content=f"<@{self.state.p1.discord_user.id}><@{self.state.p2.discord_user.id}>\n\
-                > Please report a new winner.", delete_after=10.0)
-        else:
+        # If stream manager requested it, instantly accept
+        if interaction.user == self.instance_info.instance_manager:
             # Accepted
             await self.confirm_message.delete()
             await original_msg.edit(view=None)
             self.stop()
+        else:
+            # Create confirm or deny view
+            # Get player(s) who didn't make this report.
+            target_users = [u.discord_user for u in self.state.players if u.discord_user != interaction.user]
+            # Get the reported winner
+            reported_winner = self.state.players[self.value]
+            # Create the view
+            confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users)
+            # Create the embed
+            confirm_embed:BaseEmbed = BaseEmbed(instance_info=self.instance_info)
+            confirm_embed.colour = discord.Colour.dark_green()
+            confirm_embed.title = "Reported Winner:"
+            confirm_embed.description = f"{interaction.user.mention} reported {reported_winner.discord_user.mention} won."
+            confirm_embed.set_thumbnail(url=reported_winner.discord_user.avatar.url)
+
+            self.confirm_message = await interaction.followup.send(embed=confirm_embed, view=confirm_view)
+
+            await confirm_view.wait()
+
+            if confirm_view.value == None:
+                # Timeout
+                # Re-enable select & delete reported score
+                await self.confirm_message.delete()
+                select.disabled = False
+                self.value = None
+                await original_msg.edit(view=self)
+                await original_msg.reply(content="> Timed out: Please report a new winner.", delete_after=10.0)
+            elif confirm_view.value == False:
+                # Denied
+                # Dont delete denied score reports, as it makes it easier to tell what's happening to a moderator/TO when handling disputes
+                embed:discord.Embed = BaseEmbed(instance_info=self.instance_info)
+                embed.colour = discord.Colour.red()
+                embed.set_author(name=confirm_view.disputed_user.global_name, icon_url=confirm_view.disputed_user.display_avatar.url)
+                embed.title = f"Score Disputed"
+                embed.description = f"The reported winner was disputed."
+                embed.add_field(name="Reported Winner:", value=f"<@{self.state.players[self.value].discord_user.id}>")
+                embed.add_field(name="Reported by:", value=f"<@{interaction.user.id}>")
+                embed.add_field(name="\u200b", value="If an agreement cannot be reached, please contact a Tournament Organiser", inline=False)
+
+                await self.confirm_message.edit(embed=embed, view=None)
+                self.confirm_message = None
+
+                self.value = None
+                select.disabled = False
+                await original_msg.edit(view=self)
+                await original_msg.reply(content=f"<@{self.state.p1.discord_user.id}><@{self.state.p2.discord_user.id}>\n\
+                    > Please report a new winner.", delete_after=10.0)
+            else:
+                # Accepted
+                await self.confirm_message.delete()
+                await original_msg.edit(view=None)
+                self.stop()
+            
         self.thinking = False
 
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
         if self.thinking:
             return False
+        if interaction.user == self.instance_info.instance_manager:
+            return True
         return interaction.user == self.state.p1.discord_user or interaction.user == self.state.p2.discord_user
 
 
@@ -175,7 +186,11 @@ class ConfirmWinner(ui.View):
             self.stop()
     
     def update_button_label(self):
-        self.accept_button.label = f"Accept ({len(self.accepted_users)}/{len(self.target_users)})"
+        users_str:str
+        for user in self.target_users:
+            users_str = users_str + user.display_name + ", "
+        users_str = users_str.removesuffix(", ")
+        self.accept_button.label = f"Accept ({users_str})"
 
     @ui.button(
         label="Accept",

@@ -21,7 +21,6 @@ class GameInstance():
         self.state:State = state
         self.instinf = views.InstanceInfo(ID, state)
         self.thread = thread
-        self.active = True
         self.banning_msgs:list[discord.Message] = []
 
         if ruleset == None:
@@ -617,6 +616,8 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     # Add player indicator
     player_embed:views.BaseEmbed = views.BaseEmbed(instance.instinf)
     player_embed.title = f"{state.currPlayer.display_name} is banning"
+    if state.currGame > 0 and state.currStep > 0:
+        player_embed.title = f"{state.currPlayer.display_name} is picking"
     player_embed.set_thumbnail(url=state.currPlayer.discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)
