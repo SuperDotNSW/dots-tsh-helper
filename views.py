@@ -115,7 +115,7 @@ class ReportWinnerInput(ui.View):
             # Get the reported winner
             reported_winner = self.state.players[self.value]
             # Create the view
-            confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users)
+            confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users, instance_manager=self.instance_info.instance_manager)
             # Create the embed
             confirm_embed:BaseEmbed = BaseEmbed(instance_info=self.instance_info)
             confirm_embed.colour = discord.Colour.dark_green()
@@ -172,12 +172,13 @@ class ReportWinnerInput(ui.View):
 
 
 class ConfirmWinner(ui.View):
-    def __init__(self, *, target_users:list[discord.User]):
+    def __init__(self, *, target_users:list[discord.User], instance_manager:discord.User=None):
         super().__init__(timeout=30)
         self.target_users:list[discord.User] = target_users
         self.accepted_users:list[discord.User] = []
         self.disputed_user:discord.User = None
         self.value = None
+        self.instance_manager = instance_manager
 
         self.update_button_label()
 
@@ -197,6 +198,13 @@ class ConfirmWinner(ui.View):
         style=discord.ButtonStyle.green
     )
     async def accept_button(self, interaction:discord.Interaction, button:ui.Button[ConfirmWinner]):
+        # Instant accept if instance_manager clicks
+        if interaction.user == self.instance_manager:
+            self.value = True
+            await interaction.response.edit_message(view=None)
+            self.stop()
+            return
+        
         if interaction.user in self.accepted_users:
             await interaction.response.send_message(content="You have already accepted the result", ephemeral=True)
         else:
@@ -220,6 +228,8 @@ class ConfirmWinner(ui.View):
         self.stop()
 
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
+        if interaction.user == self.instance_manager:
+            return True
         for user in self.target_users:
             if user == interaction.user:
                 return True
