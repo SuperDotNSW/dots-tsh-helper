@@ -16,6 +16,10 @@ _MAX_BEST_OF:int = 9
 _REQUEST_TIMEOUT:float = 120.0
 _DELETE_EXPIRED_REQUESTS:bool = False
 
+_MATCH_ADMINS:list[int] = [
+    255974807944822784
+]
+
 # OBS INFO
 _OBS_ENABLED:bool = True
 _OBS_WEBSOCKET_PORT:int = 4444
@@ -57,3 +61,5 @@ def get_results_song_name() -> str:
     return _OBS_RESULTS_SONG_SOURCE_NAME
 def get_striking_name() -> str:
     return _OBS_STRIKING_SOURCE_NAME
+def is_user_id_admin(user_id:int) -> bool:
+    return user_id in _MATCH_ADMINS

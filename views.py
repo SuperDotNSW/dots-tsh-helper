@@ -11,7 +11,6 @@ class InstanceInfo():
     def __init__(self, ID:int, state:State):
         self.ID:int = ID
         self.state:State = state
-        self.instance_manager:discord.User = None
 
 ##### VIEWS #####
 class AcceptOrDenyDuelRequest(ui.View):
@@ -103,7 +102,7 @@ class ReportWinnerInput(ui.View):
         await original_msg.edit(view=self)
 
         # If stream manager requested it, instantly accept
-        if interaction.user == self.instance_info.instance_manager:
+        if config.is_user_id_admin(interaction.user.id):
             # Accepted
             if self.confirm_message:
                 await self.confirm_message.delete()
@@ -116,7 +115,7 @@ class ReportWinnerInput(ui.View):
             # Get the reported winner
             reported_winner = self.state.players[self.value]
             # Create the view
-            confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users, instance_manager=self.instance_info.instance_manager)
+            confirm_view:ConfirmWinner = ConfirmWinner(target_users=target_users)
             # Create the embed
             confirm_embed:BaseEmbed = BaseEmbed(instance_info=self.instance_info)
             confirm_embed.colour = discord.Colour.dark_green()
@@ -167,19 +166,18 @@ class ReportWinnerInput(ui.View):
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
         if self.thinking:
             return False
-        if interaction.user == self.instance_info.instance_manager:
+        if config.is_user_id_admin(interaction.user.id):
             return True
         return interaction.user == self.state.p1.discord_user or interaction.user == self.state.p2.discord_user
 
 
 class ConfirmWinner(ui.View):
-    def __init__(self, *, target_users:list[discord.User], instance_manager:discord.User=None):
+    def __init__(self, *, target_users:list[discord.User]):
         super().__init__(timeout=30)
         self.target_users:list[discord.User] = target_users
         self.accepted_users:list[discord.User] = []
         self.disputed_user:discord.User = None
         self.value = None
-        self.instance_manager = instance_manager
 
         self.update_button_label()
 
@@ -199,8 +197,8 @@ class ConfirmWinner(ui.View):
         style=discord.ButtonStyle.green
     )
     async def accept_button(self, interaction:discord.Interaction, button:ui.Button[ConfirmWinner]):
-        # Instant accept if instance_manager clicks
-        if interaction.user == self.instance_manager:
+        # Instant accept if admin inputs
+        if config.is_user_id_admin(interaction.user.id):
             self.value = True
             await interaction.response.edit_message(view=None)
             self.stop()
@@ -229,7 +227,7 @@ class ConfirmWinner(ui.View):
         self.stop()
 
     async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
-        if interaction.user == self.instance_manager:
+        if config.is_user_id_admin(interaction.user.id):
             return True
         for user in self.target_users:
             if user == interaction.user:

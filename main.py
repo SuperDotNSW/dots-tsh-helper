@@ -134,8 +134,6 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
         auto_archive_duration=60, reason="Tournament Match")
     
     active_instances[0] = GameInstance(0, thread=thread, state=new_state)
-    # Assign instance_manager to command runner
-    active_instances[0].instinf.instance_manager = interaction.user
 
     # Create run_stream_match task
     active_instances[0].async_task = asyncio.create_task(active_instances[0].run_stream_match())
