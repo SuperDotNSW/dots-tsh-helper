@@ -306,8 +306,6 @@ class GameInstance():
 
             # Create banning view
             self.state.currPlayer = self.state.lastWinner
-            # Ping currPlayer
-            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
@@ -328,9 +326,7 @@ class GameInstance():
             
 
             ### Do opponent counterpick ###
-
-            # Ping currPlayer
-            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
+            
             counterpick_view = await self.send_stage_msg(is_picking=True)
             chosen_stage:Stage = None
 
@@ -511,8 +507,6 @@ class GameInstance():
 
             ### Do winner bans ###
 
-            # Ping currPlayer
-            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             # Create banning view
             bans_view = await self.send_stage_msg(is_picking=False)
 
@@ -539,8 +533,6 @@ class GameInstance():
 
             ### Do opponent counterpick ###
 
-            # Ping currPlayer
-            await self.thread.send(content=f"{self.state.currPlayer.discord_user.mention}")
             counterpick_view = await self.send_stage_msg(is_picking=True)
 
             if counterpick_view.values is None:

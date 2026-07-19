@@ -114,7 +114,7 @@ async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:dis
         instance = active_instances[instance]
         for player in instance.state.players:
             if player.discord_user == p1 or player.discord_user == p2:
-                await interaction.response.send_message(content=f"{player.discord_user.mention} is already in match #{instance.ID}.")
+                await interaction.response.send_message(content=f"{player.discord_user.mention} is already in match #{instance.ID}.", ephemeral=True)
                 return
     
     new_state.p1.discord_user = p1
