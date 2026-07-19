@@ -102,7 +102,8 @@ class ReportWinnerInput(ui.View):
         await original_msg.edit(view=self)
 
         # If stream manager requested it, instantly accept
-        if config.is_user_id_admin(interaction.user.id):
+        # If the stream manager is playing, use default behaviour
+        if config.is_user_id_admin(interaction.user.id) and not (interaction.user in [u.discord_user for u in self.state.players]):
             # Accepted
             if self.confirm_message:
                 await self.confirm_message.delete()
@@ -198,7 +199,8 @@ class ConfirmWinner(ui.View):
     )
     async def accept_button(self, interaction:discord.Interaction, button:ui.Button[ConfirmWinner]):
         # Instant accept if admin inputs
-        if config.is_user_id_admin(interaction.user.id):
+        # If admin is playing in this match, use default behaviour
+        if config.is_user_id_admin(interaction.user.id) and not interaction.user in self.target_users:
             self.value = True
             await interaction.response.edit_message(view=None)
             self.stop()
