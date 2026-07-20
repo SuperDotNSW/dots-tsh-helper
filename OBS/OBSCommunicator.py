@@ -24,7 +24,11 @@ async def initalize_obs():
     if not config.get_obs_enabled(): return
 
     obs = OBSAsync(port=config.get_obs_port(), password=config.get_obs_password())
-    await obs.connect()
+    try:
+        await obs.connect()
+    except Exception as e:
+        print(f"ERROR: Could not connect to obs websocket server! ({e})")
+        return
     
     versus_scene = obs.scene(config.get_versus_scene_name())
     game_scene = obs.scene(config.get_game_scene_name())
@@ -34,7 +38,7 @@ async def initalize_obs():
     striking_source = versus_scene.source(config.get_striking_name())
 
 async def revive_connection():
-    if not obs._client.ws:
+    if obs == None:
         print("Attempting to connect to OBS...")
         await initalize_obs()
         return

@@ -347,4 +347,4 @@ class ConfirmHostEmbed(BaseEmbed):
         )
                 
 def stage_to_file(stage:Stage) -> File:
-    return File(fp=TSHCommunicator.SHARE.base_dir+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))
+    return File(fp=TSHCommunicator.get_base_dir()+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))

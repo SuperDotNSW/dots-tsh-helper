@@ -179,7 +179,7 @@ class GameInstance():
         # Delete all banning messages
         for i in range(len(self.banning_msgs)):
             await self.banning_msgs[i].delete()
-            self.banning_msgs = []
+        self.banning_msgs = []
         
         # Send new message to report winner
         self.banning_msgs.append(await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file, view=report_winner_view))
@@ -453,7 +453,6 @@ class GameInstance():
         TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
         # Update TSH state
         self.current_tsh_data = TSHCommunicator.fetch_data()
-        self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
         # DONT swap back to versus screen in OBS yet, we will do that in the game loop
 
@@ -465,6 +464,8 @@ class GameInstance():
         selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
         selected_stage_embed.clear_fields()
         selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
+        # Update state after updating the win message to ensure correct gamecount
+        self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
         # Send game won message
         await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
         # Delete report message
@@ -563,7 +564,6 @@ class GameInstance():
             TSHCommunicator.post_stage_strike_match_win(winner=self.state.players.index(winner))
             # Update TSH state
             self.current_tsh_data = TSHCommunicator.fetch_data()
-            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
             # Update Embed
             # Recreate the embed cause the file expired for some reason??
@@ -571,6 +571,8 @@ class GameInstance():
             selected_stage_embed.set_thumbnail(url=winner.discord_user.avatar.url)
             selected_stage_embed.clear_fields()
             selected_stage_embed.add_field(name="Won by:", value=winner.discord_user.mention)
+            # Update state after updating the win message to ensure correct gamecount
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
             # Send game won message
             await self.thread.send(embed=selected_stage_embed, file=selected_stage_embed.file)
             # Delete report message
@@ -600,6 +602,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
             if neutral:
                 description = "Neutral Stage"
             else:
+                colour = discord.Colour.dark_grey()
                 description = "Counterpick Stage"
             
             # Pending striked stages, should be irrelevant for this bot but just to be thorough

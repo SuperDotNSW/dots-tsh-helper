@@ -39,6 +39,9 @@ def fetch_data() -> dict:
     else:
         return _cached_tsh_data
 
+def get_base_dir() -> str:
+    return _cached_tsh_data['basedir']
+
 def post_confirm_stage_strike():
     requests.post(f"{config.get_tsh_url()}/stage_strike_confirm_clicked")
 def post_reset_stage_strike():
