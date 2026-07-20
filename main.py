@@ -23,9 +23,7 @@ import asyncio
 load_dotenv()
 TOKEN = getenv("TOKEN")
 intents = discord.Intents.default()
-# intents.message_content = True
 bot = commands.Bot(intents=intents, command_prefix=commands.when_mentioned_or("."))
-# bot.tree = app_commands.CommandTree(bot)
 
 # Globals Setup
 active_instances:dict[int, GameInstance] = {}

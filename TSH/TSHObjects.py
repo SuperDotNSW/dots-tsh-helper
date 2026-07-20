@@ -45,11 +45,10 @@ class Ruleset():
         self.videogame:str = ""
 
         if tsh_data is not None:
-            self.update_from_tsh_data(tsh_data, best_of)
+            self.update_from_json_data(tsh_data['ruleset'], best_of)
 
-    def update_from_tsh_data(self, data:dict, best_of:int=3):
-        d = data['ruleset']
-        self.banByMaxGames = d['banByMaxGames']
+    def update_from_json_data(self, data:dict, best_of:int=3):
+        self.banByMaxGames = data['banByMaxGames']
         if self.banByMaxGames != {}:
             print("WARNING: banByMaxGames is broken in the TSH webapp! Please use banCount for streamed matches!")
             
@@ -59,20 +58,20 @@ class Ruleset():
                 print(f"ERROR: There is no ban count defined for best of {best_of}.\nUsing fallback value of 3")
                 self.banCount = 3
         else:
-            self.banCount = d['banCount']
+            self.banCount = data['banCount']
         
-        self.errors = d['errors']
-        self.name = d['name']
-        self.strikeOrder = d['strikeOrder']
-        self.useDSR = d['useDSR']
-        self.useMDSR = d['useMDSR']
-        self.videogame = d['videogame']
+        self.errors = data['errors']
+        self.name = data['name']
+        self.strikeOrder = data['strikeOrder']
+        self.useDSR = data['useDSR']
+        self.useMDSR = data['useMDSR']
+        self.videogame = data['videogame']
 
         self.neutralStages.clear()
         self.counterpickStages.clear()
-        for stagedata in d['neutralStages']:
+        for stagedata in data['neutralStages']:
             self.neutralStages.append(Stage(stagedata))
-        for stagedata in d['counterpickStages']:
+        for stagedata in data['counterpickStages']:
             newstage:Stage = Stage(stagedata)
             newstage.neutral = False
             self.counterpickStages.append(newstage)

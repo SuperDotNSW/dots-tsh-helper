@@ -6,7 +6,7 @@ import websockets
 
 # I should've just made this a class but whatever
 
-obs:OBSAsync = OBSAsync(port=config.get_obs_port(), password=config.get_obs_password())
+obs:OBSAsync = None
 
 versus_scene:Scene
 game_scene:Scene
@@ -23,6 +23,7 @@ async def initalize_obs():
     global obs, versus_scene, game_scene, versus_song_source, finale_song_source, striking_source, results_song_source
     if not config.get_obs_enabled(): return
 
+    obs = OBSAsync(port=config.get_obs_port(), password=config.get_obs_password())
     await obs.connect()
     
     versus_scene = obs.scene(config.get_versus_scene_name())
