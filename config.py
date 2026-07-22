@@ -75,9 +75,9 @@ def _write_config_file():
         ]
     
     if not "enabled" in _obs_settings.keys():
-        _configuration["OBS Settings"]["enabled"] = False
+        _obs_settings["enabled"] = False
     if not "websocket_port" in _obs_settings.keys():
-        _configuration["OBS Settings"]["websocket_port"] = 4433
+        _obs_settings["websocket_port"] = 4433
     
     if not "versus_scene" in _scene_names.keys():
         _scene_names["versus_scene"] = "Versus"

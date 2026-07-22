@@ -28,7 +28,6 @@ bot = commands.Bot(intents=intents, command_prefix=commands.when_mentioned_or(".
 # Globals Setup
 active_instances:dict[int, GameInstance] = {}
 outgoing_requests:list[discord.User] = []
-TSHCommunicator.fetch_data()
 
 # Runs only once at during bot initialisation
 async def setup_hook():
@@ -86,6 +85,10 @@ def get_unique_instance_id() -> int:
 @app_commands.describe(p1="Discord User of player 1", p2="Discord User of player 2")
 @app_commands.default_permissions(permissions=16) # Manage Channels
 async def stream_match(interaction: discord.Interaction, p1:discord.User, p2:discord.User):
+    if not TSHCommunicator._tsh_connected:
+        await interaction.response.send_message(content="TSH is not connected, please use `/start_match` instead.", ephemeral=True)
+        return
+
     if p1 == p2:
         await interaction.response.send_message(content="Both players cannot have the same user ID", ephemeral=True)
         return
