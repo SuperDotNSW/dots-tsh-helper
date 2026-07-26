@@ -40,7 +40,7 @@ class AcceptOrDenyDuelRequest(ui.View):
 
 class StageInputBase(ui.View):
     def __init__(self, *, placeholder:str="UNSET", emoji:str="", available_stages:list[Stage], target_user:discord.User):
-        super().__init__(timeout=None)
+        super().__init__(timeout=config.get_ban_timeout_time())
         self.values:list[str] = []
         self.target_user:discord.User = target_user
 
@@ -122,6 +122,7 @@ class ReportWinnerInput(ui.View):
             confirm_embed.colour = discord.Colour.dark_green()
             confirm_embed.title = "Reported Winner:"
             confirm_embed.description = f"{interaction.user.mention} reported {reported_winner.discord_user.mention} won."
+            confirm_embed.add_field(name="Notice:", value=f"-# Results will auto-accept in {config.get_auto_accept_time()}s.")
             confirm_embed.set_thumbnail(url=reported_winner.discord_user.avatar.url)
 
             self.confirm_message = await interaction.followup.send(embed=confirm_embed, view=confirm_view)
@@ -130,12 +131,11 @@ class ReportWinnerInput(ui.View):
 
             if confirm_view.value == None:
                 # Timeout
-                # Re-enable select & delete reported score
+                # Auto-Accept the reported score and proceed
                 await self.confirm_message.delete()
-                select.disabled = False
-                self.value = None
-                await original_msg.edit(view=self)
-                await original_msg.reply(content="> Timed out: Please report a new winner.", delete_after=10.0)
+                await original_msg.edit(view=None)
+                await original_msg.reply(content="> Timed out: Score has been auto-accepted")
+                self.stop()
             elif confirm_view.value == False:
                 # Denied
                 # Dont delete denied score reports, as it makes it easier to tell what's happening to a moderator/TO when handling disputes
@@ -174,7 +174,7 @@ class ReportWinnerInput(ui.View):
 
 class ConfirmWinner(ui.View):
     def __init__(self, *, target_users:list[discord.User]):
-        super().__init__(timeout=30)
+        super().__init__(timeout=config.get_auto_accept_time())
         self.target_users:list[discord.User] = target_users
         self.accepted_users:list[discord.User] = []
         self.disputed_user:discord.User = None

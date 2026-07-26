@@ -63,6 +63,10 @@ def _write_config_file():
     ##### DEFINE DEFAULTS #####
     if not "max_best_of" in _standard_settings.keys():
         _standard_settings["max_best_of"] = 9
+    if not "banning_timeout_seconds" in _standard_settings.keys():
+        _standard_settings["banning_timeout_seconds"] = 180.0
+    if not "auto_accept_results_seconds" in _standard_settings.keys():
+        _standard_settings["auto_accept_results_seconds"] = 600.0
     if not "duel_request_timeout" in _standard_settings.keys():
         _standard_settings["duel_request_timeout"] = 120.0
     if not "delete_expired_requests" in _standard_settings.keys():
@@ -121,6 +125,12 @@ def get_delete_expired_requests() -> bool:
 def get_tsh_url() -> str:
     _read_config_file()
     return _standard_settings["tsh_target_url"]
+def get_auto_accept_time() -> float:
+    _read_config_file()
+    return _standard_settings["auto_accept_results_seconds"]
+def get_ban_timeout_time() -> float:
+    _read_config_file()
+    return _standard_settings["banning_timeout_seconds"]
 
 def get_obs_enabled() -> bool:
     _read_config_file()

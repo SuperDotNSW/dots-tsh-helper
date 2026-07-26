@@ -230,7 +230,8 @@ class GameInstance():
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
-                # Something went wrong (timeout most likely)
+                # Select timed out
+                # TODO: BAN RANDOM STAGES
                 await self._send_error_message()
                 return
             else:
@@ -309,7 +310,8 @@ class GameInstance():
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
-                # Something went wrong (timeout most likely)
+                # Select timed out
+                # TODO: BAN RANDOM STAGES
                 await self._send_error_message()
                 return
             else:
@@ -419,7 +421,8 @@ class GameInstance():
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
-                # Something went wrong (timeout most likely)
+                # Select timed out
+                # TODO: BAN RANDOM STAGES
                 await self._send_error_message()
                 return
             else:
@@ -512,7 +515,8 @@ class GameInstance():
             bans_view = await self.send_stage_msg(is_picking=False)
 
             if bans_view.values is None:
-                # Something went wrong (timeout most likely)
+                # Select timed out
+                # TODO: BAN RANDOM STAGES
                 await self._send_error_message()
                 return
             else:
@@ -537,7 +541,8 @@ class GameInstance():
             counterpick_view = await self.send_stage_msg(is_picking=True)
 
             if counterpick_view.values is None:
-                # Something went wrong (timeout most likely)
+                # Select timed out
+                # TODO: BAN RANDOM STAGES
                 await self._send_error_message()
                 return
             else:
@@ -633,6 +638,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     player_embed.title = f"{state.currPlayer.display_name} is banning"
     if state.currGame > 0 and state.currStep > 0:
         player_embed.title = f"{state.currPlayer.display_name} is picking"
+    player_embed.add_field(name="Notice:", value=f"-# Stages will auto-ban in {config.get_ban_timeout_time()}.")
     player_embed.set_thumbnail(url=state.currPlayer.discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)

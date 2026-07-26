@@ -4,6 +4,7 @@ My first attempt at making a discord bot! This repository attempts to integrate 
 ### TODO:
 - Allow for multiple stage pools that players can vote on when starting their set
 - Allow for pulling ruleset(s) from .json files independent of TSH
+- Auto-Accept reporting timers for idle opponents
 
 ## How to use:
 - Create a virtual environment in the repo folder and activate it
