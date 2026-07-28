@@ -166,6 +166,8 @@ class GameInstance():
                 else:
                     await self.banning_msgs[i].edit(embeds=embeds)
         
+        # Send reminder ping just in case player is AFK
+        await self.banning_msgs[0].reply(content=self.state.currPlayer.discord_user.mention)
         # Wait for selection
         await view.wait()
 
@@ -567,7 +569,6 @@ class GameInstance():
             
 
             ### Do opponent counterpick ###
-
             counterpick_view = await self.send_stage_msg(is_picking=True)
 
             if counterpick_view.values is None:
@@ -668,7 +669,9 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     player_embed.title = f"{state.currPlayer.display_name} is banning"
     if state.currGame > 0 and state.currStep > 0:
         player_embed.title = f"{state.currPlayer.display_name} is picking"
-    player_embed.add_field(name="Notice:", value=f"-# Stages will auto-ban in {config.get_ban_timeout_time()}s.")
+        player_embed.add_field(name="Notice:", value=f"-# Stage will auto-pick in {config.get_ban_timeout_time()}s")
+    else:
+        player_embed.add_field(name="Notice:", value=f"-# Stages will auto-ban in {config.get_ban_timeout_time()}s")
     player_embed.set_thumbnail(url=state.currPlayer.discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)
