@@ -192,6 +192,31 @@ class GameInstance():
 
     #endregion
 
+    async def do_char_swap_logic(self):
+        # Does the loser have any char swaps remaining?
+        loser = self.state.get_next_player()
+        if loser.char_swaps_remaining != 0:
+            # Let loser of last game announce character swap (if they choose to)
+            embed = views.AnnounceCharSwapEmbed(instance_info=self.instinf, target_player=loser)
+            view = views.AnnounceCharSwapView(target_user=loser.discord_user)
+
+            message:discord.Message = await self.thread.send(content=loser.discord_user.mention, embed=embed, view=view)
+
+            await view.wait()
+
+            if view.value == True and loser.char_swaps_remaining != -1:
+                # Only decrease if char_swaps_remaining is not -1 as -1 means infinite char swaps
+                loser.char_swaps_remaining -= 1
+            
+
+            if view.value == True:
+                # TODO: Send confirmation message that player requested a char swap
+                embed.confirm_character_swap()
+                await self.thread.send(embed=embed)
+                pass
+
+            await message.delete()
+
     # Instance gets terminated when this function ends
     async def run_match(self):
         
@@ -244,7 +269,7 @@ class GameInstance():
                 
                 # Increment step
                 self.state.currStep += 1
-                self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
+                self.state.currPlayer = self.state.get_next_player()
                 self.state.strikedStages.append([])
         
         # One remaining available stage, stage has been chosen
@@ -298,15 +323,17 @@ class GameInstance():
 
             # Update current game
             self.state.currGame = game
-            self.state.currStep = 0
             self.state.reset_strikes()
             
             print(f"MATCH #{self.ID}: GAME {game+1} START")
+            self.state.currPlayer = self.state.lastWinner
+
+            # Let the loser swap chars if they want to
+            await self.do_char_swap_logic()
 
             ### Do winner bans ###
 
             # Create banning view
-            self.state.currPlayer = self.state.lastWinner
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
@@ -324,7 +351,7 @@ class GameInstance():
                 
                 # Increment step
                 self.state.currStep += 1
-                self.state.currPlayer = self.state.players[(self.state.get_currplayer_index() + 1) % len(self.state.players)]
+                self.state.currPlayer = self.state.get_next_player()
             
 
             ### Do opponent counterpick ###
@@ -509,6 +536,9 @@ class GameInstance():
 
             print(f"MATCH #{self.ID}: GAME {game+1} START")
 
+            # Let the loser swap chars if they want to
+            await self.do_char_swap_logic()
+
             ### Do winner bans ###
 
             # Create banning view
@@ -638,7 +668,7 @@ def create_stage_embeds(instance:GameInstance, state:State) -> FileEmbedContaine
     player_embed.title = f"{state.currPlayer.display_name} is banning"
     if state.currGame > 0 and state.currStep > 0:
         player_embed.title = f"{state.currPlayer.display_name} is picking"
-    player_embed.add_field(name="Notice:", value=f"-# Stages will auto-ban in {config.get_ban_timeout_time()}.")
+    player_embed.add_field(name="Notice:", value=f"-# Stages will auto-ban in {config.get_ban_timeout_time()}s.")
     player_embed.set_thumbnail(url=state.currPlayer.discord_user.display_avatar.url)
 
     result.embeds.append(player_embed)

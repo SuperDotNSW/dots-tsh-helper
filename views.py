@@ -171,7 +171,6 @@ class ReportWinnerInput(ui.View):
             return True
         return interaction.user == self.state.p1.discord_user or interaction.user == self.state.p2.discord_user
 
-
 class ConfirmWinner(ui.View):
     def __init__(self, *, target_users:list[discord.User]):
         super().__init__(timeout=config.get_auto_accept_time())
@@ -282,6 +281,39 @@ class ConfirmHostView(ui.View):
                 return True
         return False
 
+class AnnounceCharSwapView(ui.View):
+    def __init__(self, target_user:discord.User):
+        super().__init__(timeout=60.0)
+        self.target_user = target_user
+        self.value = False
+
+        # Just looks a bit messy
+        # self.change_character_button.label = f"({target_user.global_name}) {self.change_character_button.label}"
+        # self.no_change_button.label = f"({target_user.global_name}) {self.no_change_button.label}"
+
+    @ui.button(
+        label="Change Character",
+        style=discord.ButtonStyle.primary
+    )
+    async def change_character_button(self, interaction:discord.Interaction, button:ui.Button(AnnounceCharSwapView)):
+        self.value = True
+        await interaction.response.edit_message(view=None)
+        self.stop()
+    
+    @ui.button(
+        label="No Change",
+        style=discord.ButtonStyle.secondary
+    )
+    async def no_change_button(self, interaction:discord.Interaction, button:ui.Button(AnnounceCharSwapView)):
+        self.value = False
+        await interaction.response.edit_message(view=None)
+        self.stop()
+    
+    async def interaction_check(self, interaction:discord.Interaction, /) -> bool:
+        if interaction.user == self.target_user:
+            return True
+        return False
+
 
 ##### EMBEDS #####
 class BaseEmbed(discord.Embed):
@@ -345,6 +377,29 @@ class ConfirmHostEmbed(BaseEmbed):
             name="Hosting Guide:",
             value="[How to Host a 1v1](<https://docs.google.com/document/d/1ORMaS7vzbnZR4slmFtZGiRg6U3JuhlZ4wKSnVSkfmVs/edit?usp=sharing>)"
         )
-                
+
+class AnnounceCharSwapEmbed(BaseEmbed):
+    def __init__(self, instance_info:InstanceInfo, target_player:Player):
+        super().__init__(instance_info=instance_info)
+        self.target_player = target_player
+        self.title = "Character Swap?"
+        self.set_thumbnail(url=target_player.discord_user.avatar.url)
+        if target_player.char_swaps_remaining != -1:
+            self.description = f"{target_player.discord_user.mention} you have {target_player.char_swaps_remaining} \
+                character change(s) remaining in the set, would you like to change characters this game?\n\n\
+                    (You must announce the character in this chat **before** clicking Change Character)"
+        else:
+            self.description = f"{target_player.discord_user.mention}, would you like to change characters this game?\n\n\
+                    (You must announce the character in this chat **before** clicking Change Character)"
+        
+        self.set_footer(text=f"{self.footer.text} (Times out in 60s)")
+    
+    def confirm_character_swap(self):
+        self.title = f"{self.target_player.discord_user.global_name} Requested character swap"
+        if self.target_player.char_swaps_remaining != -1:
+            self.description = f"{self.target_player.discord_user.mention} now has {self.target_player.char_swaps_remaining} character swaps remaining."
+        else:
+            self.description = ""
+
 def stage_to_file(stage:Stage) -> File:
     return File(fp=TSHCommunicator.get_base_dir()+stage.icon_path.removeprefix("."), filename=path.basename(stage.icon_path))

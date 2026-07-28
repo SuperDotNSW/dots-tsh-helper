@@ -67,6 +67,8 @@ def _write_config_file():
         _standard_settings["banning_timeout_seconds"] = 180.0
     if not "auto_accept_results_seconds" in _standard_settings.keys():
         _standard_settings["auto_accept_results_seconds"] = 600.0
+    if not "max_character_swaps" in _standard_settings.keys():
+        _standard_settings["max_character_swaps"] = -1
     if not "duel_request_timeout" in _standard_settings.keys():
         _standard_settings["duel_request_timeout"] = 120.0
     if not "delete_expired_requests" in _standard_settings.keys():
@@ -118,6 +120,9 @@ def get_max_best_of() -> int:
 def get_match_request_timeout() -> float:
     _read_config_file()
     return _standard_settings["duel_request_timeout"]
+def get_max_character_swaps() -> int:
+    _read_config_file()
+    return _standard_settings["max_character_swaps"]
 
 def get_delete_expired_requests() -> bool:
     _read_config_file()

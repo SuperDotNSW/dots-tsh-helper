@@ -1,6 +1,7 @@
 from typing import Optional
 from math import ceil
 import discord
+import config
 
 class Stage():
     """
@@ -96,6 +97,7 @@ class Player():
         self._display_name:str = display_name
         if discord_user:
             self._display_name = discord_user.global_name
+        self.char_swaps_remaining:int = config.get_max_character_swaps()
     
     @property
     def display_name(self) -> str:
@@ -201,6 +203,9 @@ class State():
     
     def get_currplayer_index(self) -> int:
         return self.players.index(self.currPlayer)
+    
+    def get_next_player(self) -> Player:
+        return self.players[(self.get_currplayer_index() + 1) % len(self.players)]
 
     def get_games_won(self, player:Player) -> int:
         if len(self.stagesWon) == 0:
@@ -266,6 +271,7 @@ class State():
         return result
     
     def reset_strikes(self):
+        self.currStep = 0
         for p in self.strikedBy:
             self.strikedBy[p] = []
         for step in range(len(self.strikedStages)):
