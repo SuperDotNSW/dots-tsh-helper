@@ -66,7 +66,7 @@ def _write_config_file():
     if not "banning_timeout_seconds" in _standard_settings.keys():
         _standard_settings["banning_timeout_seconds"] = 180.0
     if not "auto_accept_results_seconds" in _standard_settings.keys():
-        _standard_settings["auto_accept_results_seconds"] = 600.0
+        _standard_settings["auto_accept_results_seconds"] = 180.0
     if not "max_character_swaps" in _standard_settings.keys():
         _standard_settings["max_character_swaps"] = -1
     if not "duel_request_timeout" in _standard_settings.keys():
