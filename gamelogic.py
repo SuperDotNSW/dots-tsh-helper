@@ -167,9 +167,11 @@ class GameInstance():
                     await self.banning_msgs[i].edit(embeds=embeds)
         
         # Send reminder ping just in case player is AFK
-        await self.banning_msgs[0].reply(content=self.state.currPlayer.discord_user.mention)
+        reminder_ping_msg:discord.Message = await self.banning_msgs[0].reply(content=self.state.currPlayer.discord_user.mention)
         # Wait for selection
         await view.wait()
+        # Delete reminder ping after recieving input
+        await reminder_ping_msg.delete()
 
         # Return view
         return view
