@@ -257,10 +257,15 @@ class GameInstance():
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
-                # Select timed out
-                # TODO: BAN RANDOM STAGES
-                await self._send_error_message()
-                return
+                # Select timed out, Ban random stages
+                for i in range(self.ruleset.strikeOrder[self.state.currStep]):
+                    # Get all available stages
+                    available_stages:list[Stage] = self.get_available_stages()
+                    # Pick a random stage to ban
+                    random_ban = available_stages[randint(0, len(available_stages)-1)]
+                    # Ban the stage
+                    self.state.strikedStages[self.state.currStep].append(random_ban)
+                    self.state.strikedBy[self.state.currPlayer].append(random_ban)
             else:
                 # Ban Stage(s)
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
@@ -269,10 +274,10 @@ class GameInstance():
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
                 
-                # Increment step
-                self.state.currStep += 1
-                self.state.currPlayer = self.state.get_next_player()
-                self.state.strikedStages.append([])
+            # Increment step
+            self.state.currStep += 1
+            self.state.currPlayer = self.state.get_next_player()
+            self.state.strikedStages.append([])
         
         # One remaining available stage, stage has been chosen
         chosen_stage:Stage = self.get_available_stages()[0]
@@ -339,10 +344,15 @@ class GameInstance():
             bans_view = await self.send_stage_msg()
 
             if bans_view.values is None:
-                # Select timed out
-                # TODO: BAN RANDOM STAGES
-                await self._send_error_message()
-                return
+                # Select timed out, Ban random stages
+                for i in range(self.ruleset.banCount):
+                    # Get all available stages
+                    available_stages:list[Stage] = self.get_available_stages()
+                    # Pick a random stage to ban
+                    random_ban = available_stages[randint(0, len(available_stages)-1)]
+                    # Ban the stage
+                    self.state.strikedStages[self.state.currStep].append(random_ban)
+                    self.state.strikedBy[self.state.currPlayer].append(random_ban)
             else:
                 # Ban Stage(s)
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
@@ -350,10 +360,10 @@ class GameInstance():
                     stage:Stage = self.ruleset.find_stage_by_codename(codename)
                     self.state.strikedStages[self.state.currStep].append(stage)
                     self.state.strikedBy[self.state.currPlayer].append(stage)
-                
-                # Increment step
-                self.state.currStep += 1
-                self.state.currPlayer = self.state.get_next_player()
+            
+            # Increment step
+            self.state.currStep += 1
+            self.state.currPlayer = self.state.get_next_player()
             
 
             ### Do opponent counterpick ###
@@ -362,17 +372,16 @@ class GameInstance():
             chosen_stage:Stage = None
 
             if counterpick_view.values is None:
-                # Something went wrong (timeout most likely)
-                await self._send_error_message()
-                return
+                # Select timed out, pick random stage
+                chosen_stage = self.get_available_stages()[randint(0, len(available_stages)-1)]
             else:
                 # Pick Stage
-                print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {counterpick_view.values}")
                 chosen_stage = self.ruleset.find_stage_by_codename(counterpick_view.values[0])
-                self.state.stagesPicked.append(chosen_stage)
-                
-                # Increment step
-                self.state.currStep += 1
+
+            print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {chosen_stage.codename}")
+            self.state.stagesPicked.append(chosen_stage)
+            # Increment step
+            self.state.currStep += 1
 
             ### Report winner ###
 
@@ -449,26 +458,31 @@ class GameInstance():
             # Send messsage and wait for input
             bans_view = await self.send_stage_msg()
 
+            # POST stage bans and update TSH data
             if bans_view.values is None:
-                # Select timed out
-                # TODO: BAN RANDOM STAGES
-                await self._send_error_message()
-                return
+                # Select timed out, Ban random stages
+                for i in range(self.ruleset.strikeOrder[self.state.currStep]):
+                    # Pick a random stage to ban
+                    random_ban = self.get_available_stages()[randint(0, len(available_stages)-1)]
+                    TSHCommunicator.post_click_stage(stage_object=random_ban)
+                    # ""Animate"" stage striking by delaying post requests
+                    await asyncio.sleep(1/len(bans_view.values))
             else:
-                # POST stage bans and update TSH data
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
                 for codename in bans_view.values:
                     stage:Stage = self.ruleset.find_stage_by_codename(codename)
                     TSHCommunicator.post_click_stage(stage_object=stage)
                     # ""Animate"" stage striking by delaying post requests
                     await asyncio.sleep(1/len(bans_view.values))
-                TSHCommunicator.post_confirm_stage_strike()
-                
-                # Update TSH state
-                self.current_tsh_data = TSHCommunicator.fetch_data()
-                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+            
+            # Confirm the stage picks
+            TSHCommunicator.post_confirm_stage_strike()
+            
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
-                # We will assume we were successful and proceed to the next step.
+            # We will assume we were successful and proceed to the next step.
         
         # One remaining available stage, stage has been chosen
         chosen_stage:Stage = self.get_available_stages()[0]
@@ -547,10 +561,13 @@ class GameInstance():
             bans_view = await self.send_stage_msg(is_picking=False)
 
             if bans_view.values is None:
-                # Select timed out
-                # TODO: BAN RANDOM STAGES
-                await self._send_error_message()
-                return
+                # Select timed out, Ban random stages
+                for i in range(self.ruleset.banCount):
+                    # Pick a random stage to ban
+                    random_ban = self.get_available_stages()[randint(0, len(available_stages)-1)]
+                    TSHCommunicator.post_click_stage(stage_object=random_ban)
+                    # ""Animate"" stage striking by delaying post requests
+                    await asyncio.sleep(1/len(bans_view.values))
             else:
                 # POST stage bans and update TSH data
                 print(f"MATCH #{self.ID}: {bans_view.target_user.display_name} requested ban: {bans_view.values}")
@@ -559,33 +576,34 @@ class GameInstance():
                     TSHCommunicator.post_click_stage(stage_object=stage)
                     # ""Animate"" stage striking by delaying post requests
                     await asyncio.sleep(1/len(bans_view.values))
-                TSHCommunicator.post_confirm_stage_strike()
-                
-                # Update TSH state
-                self.current_tsh_data = TSHCommunicator.fetch_data()
-                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+            
+            TSHCommunicator.post_confirm_stage_strike()
+            
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
 
-                # We will assume we were successful and proceed to the next step.
+            # We will assume we were successful and proceed to the next step.
             
 
             ### Do opponent counterpick ###
+
             counterpick_view = await self.send_stage_msg(is_picking=True)
 
             if counterpick_view.values is None:
-                # Select timed out
-                # TODO: BAN RANDOM STAGES
-                await self._send_error_message()
-                return
+                # Select timed out, Pick random stage
+                chosen_stage:Stage = self.get_available_stages()[randint(0, len(available_stages)-1)]
             else:
                 # Pick Stage
-                print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {counterpick_view.values}")
                 chosen_stage:Stage = self.ruleset.find_stage_by_codename(counterpick_view.values[0])
-                TSHCommunicator.post_click_stage(stage_object=chosen_stage)
-                TSHCommunicator.post_confirm_stage_strike()
+            
+            print(f"MATCH #{self.ID}: {counterpick_view.target_user.display_name} requested counterpick: {chosen_stage.codename}")
+            TSHCommunicator.post_click_stage(stage_object=chosen_stage)
+            TSHCommunicator.post_confirm_stage_strike()
 
-                # Update TSH state
-                self.current_tsh_data = TSHCommunicator.fetch_data()
-                self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
+            # Update TSH state
+            self.current_tsh_data = TSHCommunicator.fetch_data()
+            self.state.update_from_tsh_data(self.current_tsh_data, self.ruleset)
             
 
             ### Report winner ###
