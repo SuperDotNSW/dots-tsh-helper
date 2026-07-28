@@ -292,7 +292,7 @@ class AnnounceCharSwapView(ui.View):
         # self.no_change_button.label = f"({target_user.global_name}) {self.no_change_button.label}"
 
     @ui.button(
-        label="Change Character",
+        label="I have stated my new character",
         style=discord.ButtonStyle.primary
     )
     async def change_character_button(self, interaction:discord.Interaction, button:ui.Button(AnnounceCharSwapView)):
